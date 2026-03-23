@@ -1,0 +1,75 @@
+# =========================
+# C# / .NET
+# =========================
+bin/
+obj/
+out/
+
+# Visual Studio / Rider
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# =========================
+# Python (for build/tools)
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+venv/
+.venv/
+
+# Environment variables
+.env
+.env.*
+
+# =========================
+# Build / Generated artifacts
+# =========================
+generated/
+build/
+dist/
+
+# Streamer.bot generated outputs
+streamerbot_import.txt
+commands.csv
+streamerbot_plan.md
+
+# =========================
+# Logs
+# =========================
+*.log
+logs/
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDE / Editor
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# Temp / cache
+# =========================
+*.tmp
+*.temp
+*.bak
+.cache/
+
+# =========================
+# Secrets / local config
+# =========================
+setup.yaml
+
+# =========================
+# Optional (uncomment if needed)
+# =========================
+# *.generated.json
