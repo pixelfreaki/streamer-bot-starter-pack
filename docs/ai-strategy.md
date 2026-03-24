@@ -13,14 +13,7 @@ There are three distinct layers:
 | 🧱 Local | Deterministic fallback | C# / config |
 
 ---
-## 🔗 AI_Licia Integration
 
-AI_Licia is a separate project responsible for persona-driven interactions.
-
-Repository:
-https://github.com/pixelfreaki/streamerbot-ai-licia
-
-This starter pack integrates with AI_Licia as an optional component.
 
 ### Responsibilities
 

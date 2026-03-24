@@ -1647,22 +1647,69 @@ public class CPHInline
     {
         CPH.TryGetArg("input0", out string input0);
         CPH.TryGetArg("userName", out string userName);
+        CPH.TryGetArg("user", out string displayName);
+
+        string createdAtStr = "";
+        string resolvedUser;
+
+        if (string.IsNullOrEmpty(input0))
+        {
+            // Self: Streamer.bot provides %createdAt% for the invoking user in the event context.
+            resolvedUser = displayName;
+            CPH.TryGetArg("createdAt", out createdAtStr);
+        }
+        else
+        {
+            // Target: validate user exists, get display name.
+            // %targetCreatedAt% would be available if a type-50 sub-action ran before this block.
+            TwitchUserInfo user = CPH.TwitchGetUserInfoByLogin(input0);
+            if (user == null)
+            {
+                CPH.SendAction($"@{userName} I have no idea who {input0} is WutFace");
+                return false;
+            }
+            resolvedUser = user.UserName;
+            CPH.TryGetArg("targetCreatedAt", out createdAtStr);
+        }
+
+        if (string.IsNullOrEmpty(createdAtStr))
+            return false;
+
+        DateTime created;
+        if (!DateTime.TryParse(createdAtStr, out created))
+            return false;
+
+        created = created.ToUniversalTime();
+        DateTime now = DateTime.UtcNow;
+        int years = now.Year - created.Year;
+        int months = now.Month - created.Month;
+        if (now.Day < created.Day) months--;
+        if (months < 0) { years--; months += 12; }
+        string accountAge = years > 0
+            ? $"{years} year{(years != 1 ? "s" : "")} and {months} month{(months != 1 ? "s" : "")}"
+            : $"{months} month{(months != 1 ? "s" : "")}";
+
+        CPH.SetArgument("inputUser", resolvedUser);
+        CPH.SetArgument("accountAge", accountAge);
+        return true;
+    }
+}"""
+
+# Followage uses a separate resolve step that also sets %inputUserName% for the type-51 sub-action.
+FOLLOWAGE_CSHARP_1 = """\
+using System;
+public class CPHInline
+{
+    public bool Execute()
+    {
+        CPH.TryGetArg("input0", out string input0);
+        CPH.TryGetArg("userName", out string userName);
         if (String.IsNullOrEmpty(input0)) input0 = userName;
         TwitchUserInfo user = CPH.TwitchGetUserInfoByLogin(input0);
         if (user != null)
         {
             CPH.SetArgument("inputUser", user.UserName);
             CPH.SetArgument("inputUserName", user.UserLogin);
-            DateTime created = user.CreatedAt.ToUniversalTime();
-            DateTime now = DateTime.UtcNow;
-            int years = now.Year - created.Year;
-            int months = now.Month - created.Month;
-            if (now.Day < created.Day) months--;
-            if (months < 0) { years--; months += 12; }
-            string accountAge = years > 0
-                ? $"{years} year{(years != 1 ? "s" : "")} and {months} month{(months != 1 ? "s" : "")}"
-                : $"{months} month{(months != 1 ? "s" : "")}";
-            CPH.SetArgument("accountAge", accountAge);
             return true;
         }
         else
@@ -1672,8 +1719,6 @@ public class CPHInline
         }
     }
 }"""
-
-FOLLOWAGE_CSHARP_1 = ACCOUNTAGE_CSHARP
 
 FOLLOWAGE_CSHARP_2 = """\
 using System;
