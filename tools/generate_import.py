@@ -1653,6 +1653,16 @@ public class CPHInline
         {
             CPH.SetArgument("inputUser", user.UserName);
             CPH.SetArgument("inputUserName", user.UserLogin);
+            DateTime created = user.CreatedAt.ToUniversalTime();
+            DateTime now = DateTime.UtcNow;
+            int years = now.Year - created.Year;
+            int months = now.Month - created.Month;
+            if (now.Day < created.Day) months--;
+            if (months < 0) { years--; months += 12; }
+            string accountAge = years > 0
+                ? $"{years} year{(years != 1 ? "s" : "")} and {months} month{(months != 1 ? "s" : "")}"
+                : $"{months} month{(months != 1 ? "s" : "")}";
+            CPH.SetArgument("accountAge", accountAge);
             return true;
         }
         else
@@ -1941,10 +1951,14 @@ def build_setgame_action(name, group, queue_id, not_found_msg, not_found_game_ms
     return action_id, command_id, action
 
 
-def build_accountage_action(name, group, queue_id, not_available_msg):
+def build_accountage_action(name, group, queue_id, not_available_msg, message=None):
     """
-    !accountage — Twitch only. C# get user info -> type 1007 -> type 10 chat.
+    !accountage — Twitch only.
+    C# resolves user, computes accountAge, sets args -> if returnValue == True -> send message.
     """
+    if message is None:
+        message = "/me %inputUser% was born %accountAge% ago"
+
     action_id  = str(uuid.uuid4())
     command_id = str(uuid.uuid4())
     switch_id  = str(uuid.uuid4())
@@ -1979,11 +1993,9 @@ def build_accountage_action(name, group, queue_id, not_available_msg):
                     {
                         "random": False,
                         "subActions": [
-                            make_get_variable(parent_id=then_id, index=0),
-                            {"text": "/me %inputUser% was born %accountAge% ago",
-                             "useBot": True, "fallback": True,
-                             "id": str(uuid.uuid4()), "weight": 0.0, "type": 10,
-                             "parentId": then_id, "enabled": True, "index": 1},
+                            {"text": message, "color": 4, "useBot": True, "fallback": True,
+                             "id": str(uuid.uuid4()), "weight": 0.0, "type": 23,
+                             "parentId": then_id, "enabled": True, "index": 0},
                         ],
                         "id": then_id, "weight": 0.0, "type": 99901,
                         "parentId": if_id, "enabled": True, "index": 0,
@@ -2901,7 +2913,7 @@ def main():
     queue_id = queue_def["id"]
 
     action_id, command_id, action = build_accountage_action(
-        cmd["trigger"], cmd["group"], queue_id, aa_data["notAvailable"],
+        cmd["trigger"], cmd["group"], queue_id, aa_data["notAvailable"], aa_data["message"],
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[accountage] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
