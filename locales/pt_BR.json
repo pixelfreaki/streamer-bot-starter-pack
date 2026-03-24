@@ -2,16 +2,26 @@
   "commands": {
     "8ball": {
       "responses": [
-        "Sim, definitivamente.",
-        "Não conte com isso.",
-        "Pergunte novamente mais tarde.",
-        "É certo.",
-        "Muito duvidoso.",
-        "Sem dúvida.",
-        "Minhas fontes dizem não.",
-        "Perspectivas não são boas.",
-        "Tudo indica que sim.",
-        "Resposta nebulosa, tente novamente."
+        "É certo",
+        "Está decidido",
+        "Sem dúvida",
+        "Sim, definitivamente",
+        "Pode contar com isso",
+        "Na minha visão, sim",
+        "Muito provável",
+        "Perspectivas boas",
+        "Sim",
+        "Tudo indica que sim",
+        "Resposta nebulosa, tente novamente",
+        "Pergunte novamente mais tarde",
+        "É melhor não te dizer agora",
+        "Não consigo prever agora",
+        "Concentre-se e pergunte novamente",
+        "Não conte com isso",
+        "Minha resposta é não",
+        "Minhas fontes dizem não",
+        "Perspectivas não são boas",
+        "Muito duvidoso"
       ]
     }
   }
