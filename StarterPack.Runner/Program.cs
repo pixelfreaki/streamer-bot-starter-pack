@@ -113,6 +113,25 @@ IAiProvider? aiProvider = !string.IsNullOrWhiteSpace(openAiKey) && openAiKey != 
 if (aiProvider is not null)
     Console.WriteLine("[OpenAI] Connected — responses will be enhanced");
 
+// Build AI_Licia provider (optional)
+string? aiLiciaKey     = config["AiLicia:ApiKey"];
+string? aiLiciaChannel = config["AiLicia:ChannelName"];
+string  aiLiciaUrl     = config["AiLicia:BaseUrl"] ?? "https://api.getailicia.com";
+using StarterPack.AI.AiLicia.AiLiciaProvider aiLicia =
+    !string.IsNullOrWhiteSpace(aiLiciaKey)     && aiLiciaKey     != "your_key_here" &&
+    !string.IsNullOrWhiteSpace(aiLiciaChannel) && aiLiciaChannel != "your_channel_here"
+        ? new StarterPack.AI.AiLicia.AiLiciaProvider(aiLiciaKey, aiLiciaChannel, aiLiciaUrl)
+        : new StarterPack.AI.AiLicia.AiLiciaProvider(string.Empty, string.Empty, aiLiciaUrl);
+
+if (aiLicia.IsAvailable)
+    Console.WriteLine("[AI_Licia] Connected — persona commands enabled");
+
+// Load AI_Licia command locale strings
+var oracleElement   = commandsElement.GetProperty("oracle");
+string[] oracleStyles   = oracleElement.GetProperty("styles").EnumerateArray().Select(x => x.GetString()!).ToArray();
+string[] oracleFallback = oracleElement.GetProperty("fallback").EnumerateArray().Select(x => x.GetString()!).ToArray();
+string   oracleNoInput  = oracleElement.GetProperty("noInput").GetString()!;
+
 // Register commands
 var commands = new Dictionary<string, ICommand>(StringComparer.OrdinalIgnoreCase)
 {
@@ -137,6 +156,7 @@ var commands = new Dictionary<string, ICommand>(StringComparer.OrdinalIgnoreCase
     ["sacrifice"]      = new SacrificeCommand(sacrificeTwitch, sacrificeKick, sacrificeYouTube),
     ["russianroulette"] = new RussianRouletteCommand(rrDies, rrLives),
     ["scene"]          = new SceneCommand(),
+    ["oracle"]         = new OracleCommand(oracleStyles, oracleFallback, oracleNoInput, aiLicia.IsAvailable ? aiLicia : null),
 };
 
 string cmdList = string.Join(" ", commands.Keys.Order().Select(k => $"!{k}"));
@@ -173,5 +193,10 @@ while (true)
     var context = new CommandContext { UserName = "local", Input = input };
     var result = await command.ExecuteAsync(context);
 
-    Console.WriteLine(result.Success ? result.Message : $"[error] {result.Message}");
+    if (!result.Success)
+        Console.WriteLine($"[error] {result.Message}");
+    else if (result.Message == string.Empty)
+        Console.WriteLine("[AI_Licia triggered — response will appear in chat]");
+    else
+        Console.WriteLine(result.Message);
 }

@@ -103,5 +103,10 @@
     "trigger": "!scene",
     "queue": "obs",
     "group": "OBS"
+  },
+  "oracle": {
+    "trigger": "!oracle",
+    "queue": "ai",
+    "group": "AI_Licia"
   }
 }
