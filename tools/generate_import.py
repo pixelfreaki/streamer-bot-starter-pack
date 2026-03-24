@@ -1664,20 +1664,24 @@ public class CPHInline
         CPH.TryGetArg("userName", out string userName);
         CPH.TryGetArg("user", out string displayName);
 
+        // Strip leading @ if the user typed e.g. !accountage @someone
+        if (!string.IsNullOrEmpty(input0) && input0.StartsWith("@"))
+            input0 = input0.Substring(1);
+
         string targetLogin;
         string resolvedUser;
 
         if (string.IsNullOrEmpty(input0))
         {
-            targetLogin   = userName;
-            resolvedUser  = displayName;
+            targetLogin  = userName;
+            resolvedUser = displayName;
         }
         else
         {
             TwitchUserInfo user = CPH.TwitchGetUserInfoByLogin(input0);
             if (user == null)
             {
-                CPH.SendAction($"@{userName} I have no idea who {input0} is WutFace");
+                CPH.SendMessage($"@{userName} I have no idea who {input0} is WutFace");
                 return false;
             }
             targetLogin  = user.UserLogin;
@@ -1686,14 +1690,20 @@ public class CPHInline
 
         string url = $"https://decapi.me/twitch/accountage/{targetLogin}?precision=4";
         string accountAge;
-        using (var client = new WebClient())
+        try
         {
-            accountAge = client.DownloadString(url).Trim();
+            using (var client = new WebClient())
+                accountAge = client.DownloadString(url).Trim();
+        }
+        catch (Exception ex)
+        {
+            CPH.SendMessage($"@{userName} Could not retrieve account age for {resolvedUser} WutFace ({ex.Message})");
+            return false;
         }
 
         if (string.IsNullOrEmpty(accountAge) || accountAge.StartsWith("Error"))
         {
-            CPH.SendAction($"@{userName} Could not retrieve account age for {resolvedUser} WutFace");
+            CPH.SendMessage($"@{userName} Could not retrieve account age for {resolvedUser} WutFace");
             return false;
         }
 
