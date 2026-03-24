@@ -1653,13 +1653,20 @@ TRANSLATE_REFERENCES = [
     "C:\\\\Windows\\\\Microsoft.NET\\\\Framework64\\\\v4.0.30319\\\\System.Web.dll",
 ]
 
-ACCOUNTAGE_CSHARP = """\
+def _make_accountage_csharp(message_template):
+    """Build the accountage inline C# with the locale message baked in.
+    Converts %inputUser% / %accountAge% placeholders to C# string interpolation.
+    """
+    cs_msg = (message_template
+              .replace("%inputUser%", "{resolvedUser}")
+              .replace("%accountAge%", "{accountAge}"))
+    return f"""\
 using System;
 using System.Net;
 public class CPHInline
-{
+{{
     public bool Execute()
-    {
+    {{
         CPH.TryGetArg("input0", out string input0);
         CPH.TryGetArg("userName", out string userName);
         CPH.TryGetArg("user", out string displayName);
@@ -1672,46 +1679,45 @@ public class CPHInline
         string resolvedUser;
 
         if (string.IsNullOrEmpty(input0))
-        {
+        {{
             targetLogin  = userName;
             resolvedUser = displayName;
-        }
+        }}
         else
-        {
+        {{
             TwitchUserInfo user = CPH.TwitchGetUserInfoByLogin(input0);
             if (user == null)
-            {
-                CPH.SendMessage($"@{userName} I have no idea who {input0} is WutFace");
+            {{
+                CPH.SendMessage($"@{{userName}} I have no idea who {{input0}} is WutFace");
                 return false;
-            }
+            }}
             targetLogin  = user.UserLogin;
             resolvedUser = user.UserName;
-        }
+        }}
 
-        string url = $"https://decapi.me/twitch/accountage/{targetLogin}?precision=4";
+        string url = $"https://decapi.me/twitch/accountage/{{targetLogin}}?precision=4";
         string accountAge;
         try
-        {
+        {{
             using (var client = new WebClient())
                 accountAge = client.DownloadString(url).Trim();
-        }
+        }}
         catch (Exception ex)
-        {
-            CPH.SendMessage($"@{userName} Could not retrieve account age for {resolvedUser} WutFace ({ex.Message})");
+        {{
+            CPH.SendMessage($"@{{userName}} Could not get account age for {{resolvedUser}} WutFace ({{ex.Message}})");
             return false;
-        }
+        }}
 
         if (string.IsNullOrEmpty(accountAge) || accountAge.StartsWith("Error"))
-        {
-            CPH.SendMessage($"@{userName} Could not retrieve account age for {resolvedUser} WutFace");
+        {{
+            CPH.SendMessage($"@{{userName}} Could not get account age for {{resolvedUser}} WutFace");
             return false;
-        }
+        }}
 
-        CPH.SetArgument("inputUser", resolvedUser);
-        CPH.SetArgument("accountAge", accountAge);
+        CPH.SendMessage($"{cs_msg}");
         return true;
-    }
-}"""
+    }}
+}}"""
 
 # Followage uses a separate resolve step that also sets %inputUserName% for the type-51 sub-action.
 FOLLOWAGE_CSHARP_1 = """\
@@ -2017,7 +2023,7 @@ def build_setgame_action(name, group, queue_id, not_found_msg, not_found_game_ms
 def build_accountage_action(name, group, queue_id, not_available_msg, message=None):
     """
     !accountage — Twitch only.
-    C# resolves user, computes accountAge, sets args -> if returnValue == True -> send message.
+    C# fetches account age via decapi.me and sends the formatted message directly.
     """
     if message is None:
         message = "/me %inputUser% was born %accountAge% ago"
@@ -2025,47 +2031,24 @@ def build_accountage_action(name, group, queue_id, not_available_msg, message=No
     action_id  = str(uuid.uuid4())
     command_id = str(uuid.uuid4())
     switch_id  = str(uuid.uuid4())
-
     twitch_id  = str(uuid.uuid4())
-    if_id      = str(uuid.uuid4())
-    then_id    = str(uuid.uuid4())
 
-    byte_code = base64.b64encode(ACCOUNTAGE_CSHARP.encode("utf-8")).decode("utf-8")
-
-    def _cs(parent_id, index):
-        return {
-            "name": "", "description": "",
-            "references": [
-                "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\mscorlib.dll",
-                "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.dll",
-            ],
-            "byteCode": byte_code,
-            "precompile": False, "delayStart": False,
-            "saveResultToVariable": False, "saveToVariable": "",
-            "id": str(uuid.uuid4()), "weight": 0.0, "type": 99999,
-            "parentId": parent_id, "enabled": True, "index": index,
-        }
+    byte_code = base64.b64encode(_make_accountage_csharp(message).encode("utf-8")).decode("utf-8")
 
     twitch_case = {
         "caseSensitive": True, "values": ["twitch"], "random": False,
         "subActions": [
-            _cs(twitch_id, 0),
             {
-                "input": "%returnValue%", "operation": 0, "value": "True", "autoType": True,
-                "subActions": [
-                    {
-                        "random": False,
-                        "subActions": [
-                            {"text": message, "color": 4, "useBot": True, "fallback": True,
-                             "id": str(uuid.uuid4()), "weight": 0.0, "type": 23,
-                             "parentId": then_id, "enabled": True, "index": 0},
-                        ],
-                        "id": then_id, "weight": 0.0, "type": 99901,
-                        "parentId": if_id, "enabled": True, "index": 0,
-                    },
+                "name": "", "description": "",
+                "references": [
+                    "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\mscorlib.dll",
+                    "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.dll",
                 ],
-                "id": if_id, "weight": 0.0, "type": 120,
-                "parentId": twitch_id, "enabled": True, "index": 1,
+                "byteCode": byte_code,
+                "precompile": False, "delayStart": False,
+                "saveResultToVariable": False, "saveToVariable": "",
+                "id": str(uuid.uuid4()), "weight": 0.0, "type": 99999,
+                "parentId": twitch_id, "enabled": True, "index": 0,
             },
         ],
         "id": twitch_id, "weight": 0.0, "type": 99903,
