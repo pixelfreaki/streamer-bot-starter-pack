@@ -57,7 +57,7 @@ public class EightBallCommandTests
 
         Assert.True(result.Success);
         Assert.Contains(result.Message, ValidResponses);
-        ai.Verify(x => x.EnhanceAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+        ai.Verify(x => x.EnhanceAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<int>(), It.IsAny<double>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -65,7 +65,7 @@ public class EightBallCommandTests
     {
         var ai = new Mock<IAiProvider>();
         ai.Setup(x => x.IsAvailable).Returns(true);
-        ai.Setup(x => x.EnhanceAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+        ai.Setup(x => x.EnhanceAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<int>(), It.IsAny<double>(), It.IsAny<CancellationToken>()))
           .ReturnsAsync("The stars align in your favor!");
 
         var command = new EightBallCommand(aiProvider: ai.Object);
@@ -81,7 +81,7 @@ public class EightBallCommandTests
     {
         var ai = new Mock<IAiProvider>();
         ai.Setup(x => x.IsAvailable).Returns(true);
-        ai.Setup(x => x.EnhanceAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+        ai.Setup(x => x.EnhanceAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<int>(), It.IsAny<double>(), It.IsAny<CancellationToken>()))
           .ReturnsAsync((string?)null);
 
         var command = new EightBallCommand(aiProvider: ai.Object);

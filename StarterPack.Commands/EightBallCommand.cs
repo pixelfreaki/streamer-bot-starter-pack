@@ -88,6 +88,8 @@ public class EightBallCommand : ICommand
             string? enhanced = await _aiProvider.EnhanceAsync(
                 baseResponse,
                 _systemPrompt,
+                maxTokens: 100,
+                temperature: 0.7,
                 cancellationToken);
 
             if (enhanced is not null)

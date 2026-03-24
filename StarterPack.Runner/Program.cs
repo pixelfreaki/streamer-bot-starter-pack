@@ -25,13 +25,84 @@ if (!File.Exists(localePath))
 }
 
 using var localeDoc = JsonDocument.Parse(File.ReadAllText(localePath));
-string[] eightBallResponses = localeDoc.RootElement
-    .GetProperty("commands")
+var commandsElement = localeDoc.RootElement.GetProperty("commands");
+
+string[] eightBallResponses = commandsElement
     .GetProperty("8ball")
     .GetProperty("responses")
     .EnumerateArray()
     .Select(x => x.GetString()!)
     .ToArray();
+
+var flipcoinElement     = commandsElement.GetProperty("flipcoin");
+string[] flipCoinHeads    = flipcoinElement.GetProperty("heads").EnumerateArray().Select(x => x.GetString()!).ToArray();
+string[] flipCoinTails    = flipcoinElement.GetProperty("tails").EnumerateArray().Select(x => x.GetString()!).ToArray();
+string[] flipCoinWin      = flipcoinElement.GetProperty("win").EnumerateArray().Select(x => x.GetString()!).ToArray();
+string[] flipCoinLoss     = flipcoinElement.GetProperty("loss").EnumerateArray().Select(x => x.GetString()!).ToArray();
+string   flipCoinNoChoice = flipcoinElement.GetProperty("noChoice").GetString()!;
+
+var jokeElement = commandsElement.GetProperty("joke");
+string[] jokeFallbacks = jokeElement
+    .GetProperty("responses")
+    .EnumerateArray()
+    .Select(x => x.GetString()!)
+    .ToArray();
+string jokeEmptyPrompt = jokeElement.GetProperty("emptyPrompt").GetString()!;
+string jokeTopicPrompt = jokeElement.GetProperty("topicPrompt").GetString()!;
+
+string[] fortuneResponses = commandsElement
+    .GetProperty("fortune")
+    .GetProperty("responses")
+    .EnumerateArray()
+    .Select(x => x.GetString()!)
+    .ToArray();
+
+string[] lurkMessages = commandsElement
+    .GetProperty("lurk")
+    .GetProperty("responses")
+    .EnumerateArray()
+    .Select(x => x.GetString()!)
+    .ToArray();
+
+var clipElement   = commandsElement.GetProperty("clip");
+string clipSuccess = clipElement.GetProperty("success").GetString()!;
+string clipFailure = clipElement.GetProperty("failure").GetString()!;
+
+string commandsFormat     = commandsElement.GetProperty("commands").GetProperty("message").GetString()!;
+string pcMessage          = commandsElement.GetProperty("pc").GetProperty("message").GetString()!;
+string gearMessage        = commandsElement.GetProperty("gear").GetProperty("message").GetString()!;
+string peripheralsMessage = commandsElement.GetProperty("peripherals").GetProperty("message").GetString()!;
+
+// shoutout
+var shoutoutElement = commandsElement.GetProperty("shoutout");
+// (no runtime messages needed for shoutout stub)
+
+// setgame
+var setgameElement    = commandsElement.GetProperty("setgame");
+string setgameNotFound     = setgameElement.GetProperty("notFound").GetString()!;
+string setgameNotAvailable = setgameElement.GetProperty("notAvailable").GetString()!;
+
+// accountage
+var accountageElement    = commandsElement.GetProperty("accountage");
+string accountageMessage     = accountageElement.GetProperty("message").GetString()!;
+string accountageNotAvailable = accountageElement.GetProperty("notAvailable").GetString()!;
+
+// time
+var timeElement    = commandsElement.GetProperty("time");
+string timeTwitch  = timeElement.GetProperty("twitch").GetString()!;
+string timeKick    = timeElement.GetProperty("kick").GetString()!;
+string timeYouTube = timeElement.GetProperty("youtube").GetString()!;
+
+// sacrifice
+var sacrificeElement    = commandsElement.GetProperty("sacrifice");
+string sacrificeTwitch  = sacrificeElement.GetProperty("twitch").GetString()!;
+string sacrificeKick    = sacrificeElement.GetProperty("kick").GetString()!;
+string sacrificeYouTube = sacrificeElement.GetProperty("youtube").GetString()!;
+
+// russianroulette
+var rrElement    = commandsElement.GetProperty("russianroulette");
+string rrDies    = rrElement.GetProperty("dies").GetString()!;
+string rrLives   = rrElement.GetProperty("lives").GetString()!;
 
 // Build AI provider (optional)
 string? openAiKey = config["OpenAI:ApiKey"];
@@ -45,8 +116,31 @@ if (aiProvider is not null)
 // Register commands
 var commands = new Dictionary<string, ICommand>(StringComparer.OrdinalIgnoreCase)
 {
-    ["8ball"] = new EightBallCommand(eightBallResponses, aiProvider, locale)
+    ["8ball"]    = new EightBallCommand(eightBallResponses, aiProvider, locale),
+    ["flipcoin"] = new FlipCoinCommand(flipCoinHeads, flipCoinTails, flipCoinWin, flipCoinLoss, flipCoinNoChoice),
+    ["joke"]     = new JokeCommand(jokeFallbacks, aiProvider, locale, jokeEmptyPrompt, jokeTopicPrompt),
+    ["fortune"]  = new FortuneCommand(fortuneResponses),
+    ["lurk"]     = new LurkCommand(lurkMessages),
+    ["clip"]           = new ClipCommand(clipSuccess, clipFailure,
+                           createClip: () => "https://clips.twitch.tv/demo-clip"),
+    ["pc"]             = new InfoCommand("pc",          pcMessage),
+    ["gear"]           = new InfoCommand("gear",        gearMessage),
+    ["peripherals"]    = new InfoCommand("peripherals", peripheralsMessage),
+    ["shoutout"]       = new ShoutoutCommand(),
+    ["settitle"]       = new SetTitleCommand(),
+    ["setgame"]        = new SetGameCommand(setgameNotFound, setgameNotAvailable),
+    ["accountage"]     = new AccountAgeCommand(accountageMessage, accountageNotAvailable),
+    ["followage"]      = new FollowAgeCommand(),
+    ["uptime"]         = new UptimeCommand(),
+    ["time"]           = new TimeCommand(timeTwitch, timeKick, timeYouTube),
+    ["translate"]      = new TranslateCommand(),
+    ["sacrifice"]      = new SacrificeCommand(sacrificeTwitch, sacrificeKick, sacrificeYouTube),
+    ["russianroulette"] = new RussianRouletteCommand(rrDies, rrLives),
+    ["scene"]          = new SceneCommand(),
 };
+
+string cmdList = string.Join(" ", commands.Keys.Order().Select(k => $"!{k}"));
+commands["commands"] = new InfoCommand("commands", commandsFormat.Replace("{commands}", cmdList));
 
 Console.WriteLine($"Streamer.bot Runner [{locale}] — type !<command> [input] or 'exit' to quit");
 Console.WriteLine($"Available commands: {string.Join(", ", commands.Keys.Select(k => $"!{k}"))}");

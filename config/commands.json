@@ -3,5 +3,105 @@
     "trigger": "!8ball",
     "queue": "ai",
     "group": "Fun"
+  },
+  "flipcoin": {
+    "trigger": "!flipcoin",
+    "queue": "fun",
+    "group": "Fun"
+  },
+  "joke": {
+    "trigger": "!joke",
+    "queue": "ai",
+    "group": "Fun"
+  },
+  "fortune": {
+    "trigger": "!fortune",
+    "queue": "fun",
+    "group": "Fun"
+  },
+  "lurk": {
+    "trigger": "!lurk",
+    "queue": "fun",
+    "group": "Fun"
+  },
+  "clip": {
+    "trigger": "!clip",
+    "queue": "stream",
+    "group": "Stream"
+  },
+  "commands": {
+    "trigger": "!commands",
+    "queue": "info",
+    "group": "Info"
+  },
+  "pc": {
+    "trigger": "!pc",
+    "queue": "info",
+    "group": "Info"
+  },
+  "gear": {
+    "trigger": "!gear",
+    "queue": "info",
+    "group": "Info"
+  },
+  "peripherals": {
+    "trigger": "!peripherals",
+    "queue": "info",
+    "group": "Info"
+  },
+  "shoutout": {
+    "trigger": "!shoutout",
+    "queue": "stream",
+    "group": "Stream"
+  },
+  "settitle": {
+    "trigger": "!settitle",
+    "queue": "stream",
+    "group": "Stream"
+  },
+  "setgame": {
+    "trigger": "!setgame",
+    "queue": "stream",
+    "group": "Stream"
+  },
+  "accountage": {
+    "trigger": "!accountage",
+    "queue": "info",
+    "group": "Info"
+  },
+  "followage": {
+    "trigger": "!followage",
+    "queue": "info",
+    "group": "Info"
+  },
+  "uptime": {
+    "trigger": "!uptime",
+    "queue": "info",
+    "group": "Info"
+  },
+  "time": {
+    "trigger": "!time",
+    "queue": "info",
+    "group": "Info"
+  },
+  "translate": {
+    "trigger": "!translate",
+    "queue": "ai",
+    "group": "Info"
+  },
+  "sacrifice": {
+    "trigger": "!sacrifice",
+    "queue": "fun",
+    "group": "Fun"
+  },
+  "russianroulette": {
+    "trigger": "!russianroulette",
+    "queue": "fun",
+    "group": "Fun"
+  },
+  "scene": {
+    "trigger": "!scene",
+    "queue": "obs",
+    "group": "OBS"
   }
 }

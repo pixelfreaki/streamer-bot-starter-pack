@@ -17,7 +17,7 @@ public class AiLiciaProvider : IAiProvider
         _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
     }
 
-    public Task<string?> EnhanceAsync(string prompt, string? systemPrompt = null, CancellationToken cancellationToken = default)
+    public Task<string?> EnhanceAsync(string prompt, string? systemPrompt = null, int maxTokens = 300, double temperature = 0.7, CancellationToken cancellationToken = default)
     {
         if (!IsAvailable)
             return Task.FromResult<string?>(null);

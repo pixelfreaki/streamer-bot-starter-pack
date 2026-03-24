@@ -21,7 +21,7 @@ public class OpenAiProvider : IAiProvider
         _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
     }
 
-    public async Task<string?> EnhanceAsync(string prompt, string? systemPrompt = null, CancellationToken cancellationToken = default)
+    public async Task<string?> EnhanceAsync(string prompt, string? systemPrompt = null, int maxTokens = 300, double temperature = 0.7, CancellationToken cancellationToken = default)
     {
         if (!IsAvailable)
             return null;
@@ -34,7 +34,8 @@ public class OpenAiProvider : IAiProvider
         {
             model = Model,
             messages,
-            max_tokens = 100
+            max_tokens = maxTokens,
+            temperature
         });
 
         using var content = new StringContent(body, Encoding.UTF8, "application/json");
