@@ -9,6 +9,7 @@
     <ProjectReference Include="..\StarterPack.Commands\StarterPack.Commands.csproj" />
     <ProjectReference Include="..\StarterPack.Core\StarterPack.Core.csproj" />
     <ProjectReference Include="..\StarterPack.AI.OpenAI\StarterPack.AI.OpenAI.csproj" />
+    <ProjectReference Include="..\StarterPack.AI.AiLicia\StarterPack.AI.AiLicia.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
