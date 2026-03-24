@@ -45,7 +45,7 @@ if (aiProvider is not null)
 // Register commands
 var commands = new Dictionary<string, ICommand>(StringComparer.OrdinalIgnoreCase)
 {
-    ["8ball"] = new EightBallCommand(eightBallResponses, aiProvider)
+    ["8ball"] = new EightBallCommand(eightBallResponses, aiProvider, locale)
 };
 
 Console.WriteLine($"Streamer.bot Runner [{locale}] — type !<command> [input] or 'exit' to quit");

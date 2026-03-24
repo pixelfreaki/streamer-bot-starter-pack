@@ -5,7 +5,7 @@ namespace StarterPack.Commands;
 
 public class EightBallCommand : ICommand
 {
-    private const string SystemPrompt =
+    private const string BaseSystemPrompt =
         """
         You are Pixelfreaki, a playful and slightly chaotic magical fox spirit trapped inside a retro 8-ball.
 
@@ -67,14 +67,16 @@ public class EightBallCommand : ICommand
 
     private readonly string[] _responses;
     private readonly IAiProvider? _aiProvider;
+    private readonly string _systemPrompt;
     private readonly Random _random = new();
 
     public string Name => "8ball";
 
-    public EightBallCommand(string[]? responses = null, IAiProvider? aiProvider = null)
+    public EightBallCommand(string[]? responses = null, IAiProvider? aiProvider = null, string? locale = null)
     {
         _responses = responses is { Length: > 0 } ? responses : DefaultResponses;
         _aiProvider = aiProvider;
+        _systemPrompt = BuildSystemPrompt(locale);
     }
 
     public async Task<CommandResult> ExecuteAsync(CommandContext context, CancellationToken cancellationToken = default)
@@ -85,7 +87,7 @@ public class EightBallCommand : ICommand
         {
             string? enhanced = await _aiProvider.EnhanceAsync(
                 baseResponse,
-                SystemPrompt,
+                _systemPrompt,
                 cancellationToken);
 
             if (enhanced is not null)
@@ -93,5 +95,20 @@ public class EightBallCommand : ICommand
         }
 
         return CommandResult.Ok(baseResponse);
+    }
+
+    private static string BuildSystemPrompt(string? locale)
+    {
+        string languageInstruction = locale switch
+        {
+            "pt_BR" => "You must respond in Brazilian Portuguese.",
+            "en" => "You must respond in English.",
+            null => string.Empty,
+            _ => $"You must respond in the language matching locale '{locale}'."
+        };
+
+        return string.IsNullOrEmpty(languageInstruction)
+            ? BaseSystemPrompt
+            : BaseSystemPrompt + $"\nLanguage: {languageInstruction}";
     }
 }
