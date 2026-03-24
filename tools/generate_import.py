@@ -220,18 +220,21 @@ def main():
 
     json_str = json.dumps(export, ensure_ascii=False, indent=2)
 
+    out_dir = os.path.join(ROOT, "generated", "streamerbot")
+    os.makedirs(out_dir, exist_ok=True)
+
     # Raw JSON file (import via file dialog)
-    json_path = os.path.join(ROOT, "streamerbot_import.json")
+    json_path = os.path.join(out_dir, "8ball.import.json")
     with open(json_path, "w", encoding="utf-8") as f:
         f.write(json_str)
-    print(f"[done] written to streamerbot_import.json")
+    print(f"[done] written to generated/streamerbot/8ball.import.json")
 
     # Base64 file (import via paste dialog)
     encoded = base64.b64encode(json_str.encode("utf-8")).decode("utf-8")
-    txt_path = os.path.join(ROOT, "streamerbot_import.txt")
+    txt_path = os.path.join(out_dir, "8ball.import.txt")
     with open(txt_path, "w", encoding="utf-8") as f:
         f.write(encoded)
-    print(f"[done] written to streamerbot_import.txt")
+    print(f"[done] written to generated/streamerbot/8ball.import.txt")
 
     print()
     print("Import options:")
@@ -239,12 +242,12 @@ def main():
     print("  Option A — file import:")
     print("    1. Open Streamer.bot")
     print("    2. Actions tab -> right-click the action list -> Import")
-    print("    3. Select streamerbot_import.json")
+    print("    3. Select generated/streamerbot/8ball.import.json")
     print()
     print("  Option B — paste import:")
     print("    1. Open Streamer.bot")
     print("    2. Actions tab -> Import button (top right)")
-    print("    3. Paste the contents of streamerbot_import.txt")
+    print("    3. Paste the contents of generated/streamerbot/8ball.import.txt")
     print()
     print("Optional — to enable OpenAI enhancement:")
     print('  In Streamer.bot go to Settings > Variables and add:')

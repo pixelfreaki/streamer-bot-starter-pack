@@ -37,9 +37,7 @@ generated/
 build/
 dist/
 
-# Streamer.bot generated outputs
-streamerbot_import.txt
-streamerbot_import.json
+# Streamer.bot generated outputs (see generated/streamerbot/)
 commands.csv
 streamerbot_plan.md
 
