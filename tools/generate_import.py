@@ -20,7 +20,6 @@ import uuid
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SBAE_HEADER = b"SBAE"
-GROUP_NAME = "Streamer.bot Starter Pack"
 EXPORTED_FROM = "1.0.4"
 MINIMUM_VERSION = "1.0.0-alpha.1"
 EXPORT_VERSION = 23
@@ -137,6 +136,12 @@ def load_json(path):
         return json.load(f)
 
 
+def load_config():
+    queues = load_json(os.path.join(ROOT, "config", "queues.json"))
+    commands = load_json(os.path.join(ROOT, "config", "commands.json"))
+    return queues, commands
+
+
 def encode_export(export_dict):
     json_bytes = json.dumps(export_dict, ensure_ascii=False).encode("utf-8")
     compressed = gzip.compress(json_bytes)
@@ -218,7 +223,7 @@ def make_send_switch(text, parent_id=None, index=0):
     }
 
 
-def make_action(name, code, queue_id):
+def make_action(name, group, code, queue_id):
     action_id = str(uuid.uuid4())
     command_id = str(uuid.uuid4())
 
@@ -229,7 +234,7 @@ def make_action(name, code, queue_id):
         "excludeFromHistory": False,
         "excludeFromPending": False,
         "name": name,
-        "group": GROUP_NAME,
+        "group": group,
         "alwaysRun": False,
         "randomAction": False,
         "concurrent": False,
@@ -252,7 +257,7 @@ def make_action(name, code, queue_id):
     }
 
 
-def make_command(name, trigger, command_id, action_id):
+def make_command(name, trigger, group, command_id, action_id):
     return {
         "permittedUsers": [],
         "permittedGroups": [],
@@ -272,7 +277,7 @@ def make_command(name, trigger, command_id, action_id):
         "caseSensitive": False,
         "globalCooldown": 0,
         "userCooldown": 0,
-        "group": GROUP_NAME,
+        "group": group,
         "grantType": 0,
     }
 
@@ -302,10 +307,25 @@ def main():
     responses = locale_data["commands"]["8ball"]["responses"]
     print(f"[info] loaded {len(responses)} 8ball responses")
 
-    code = build_eightball_code(responses, locale)
+    queues_config, commands_config = load_config()
+
+    # Build 8ball
+    cmd_meta = commands_config["8ball"]
+    queue_key = cmd_meta["queue"]
+    group = cmd_meta["group"]
+    trigger = cmd_meta["trigger"]
+
+    if queue_key not in queues_config:
+        raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
+
+    queue_def = queues_config[queue_key]
     queue_id = str(uuid.uuid4())
-    action_id, command_id, action = make_action("!8ball", code, queue_id)
-    command = make_command("!8ball", "!8ball", command_id, action_id)
+
+    code = build_eightball_code(responses, locale)
+    action_id, command_id, action = make_action(trigger, group, code, queue_id)
+    command = make_command(trigger, trigger, group, command_id, action_id)
+
+    print(f"[info] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {group}")
 
     export = {
         "meta": {
@@ -319,7 +339,11 @@ def main():
         "data": {
             "actions": [action],
             "queues": [
-                {"id": queue_id, "blocking": False, "name": GROUP_NAME}
+                {
+                    "id": queue_id,
+                    "blocking": queue_def["blocking"],
+                    "name": queue_def["name"],
+                }
             ],
             "commands": [command],
             "websocketServers": [],

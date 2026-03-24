@@ -1,0 +1,7 @@
+{
+  "8ball": {
+    "trigger": "!8ball",
+    "queue": "ai",
+    "group": "Fun"
+  }
+}
