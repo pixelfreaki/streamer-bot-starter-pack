@@ -3273,6 +3273,11 @@ def main():
     print('  Settings -> Variables -> add "openai_api_key" (persisted global variable)')
     print("  When set, responses are enhanced by Pixelfreaki (gpt-4o-mini).")
     print("  Falls back to local responses if the key is missing or on any error.")
+    print()
+    print("AI_Licia integration (optional, oracle/horoscope/curse/omen/tarot/judge/hex):")
+    print('  Settings -> Variables -> add "ai_licia_key" (persisted global variable)')
+    print("  When set, AI_Licia sends a persona-driven response directly to chat.")
+    print("  Falls back to local responses if the key is missing or on any error.")
 
 
 def _write_export(out_dir, name, queue_id, queue_def, action, command):
