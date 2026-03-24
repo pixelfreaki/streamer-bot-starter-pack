@@ -9,4 +9,8 @@
     <ProjectReference Include="..\StarterPack.Commands\StarterPack.Commands.csproj" />
     <ProjectReference Include="..\StarterPack.Core\StarterPack.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\appsettings.json" CopyToOutputDirectory="PreserveNewest" Link="appsettings.json" />
+    <Content Include="..\locales\**\*" CopyToOutputDirectory="PreserveNewest" Link="locales\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
 </Project>

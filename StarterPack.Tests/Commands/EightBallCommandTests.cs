@@ -51,7 +51,7 @@ public class EightBallCommandTests
         var ai = new Mock<IAiProvider>();
         ai.Setup(x => x.IsAvailable).Returns(false);
 
-        var command = new EightBallCommand(ai.Object);
+        var command = new EightBallCommand(aiProvider: ai.Object);
 
         var result = await command.ExecuteAsync(EmptyContext);
 
@@ -68,7 +68,7 @@ public class EightBallCommandTests
         ai.Setup(x => x.EnhanceAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
           .ReturnsAsync("The stars align in your favor!");
 
-        var command = new EightBallCommand(ai.Object);
+        var command = new EightBallCommand(aiProvider: ai.Object);
 
         var result = await command.ExecuteAsync(EmptyContext);
 
@@ -84,7 +84,7 @@ public class EightBallCommandTests
         ai.Setup(x => x.EnhanceAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
           .ReturnsAsync((string?)null);
 
-        var command = new EightBallCommand(ai.Object);
+        var command = new EightBallCommand(aiProvider: ai.Object);
 
         var result = await command.ExecuteAsync(EmptyContext);
 

@@ -5,12 +5,12 @@ namespace StarterPack.Commands;
 
 public class EightBallCommand : ICommand
 {
-    private static readonly string[] Responses =
+    private static readonly string[] DefaultResponses =
     [
         "It is certain",
         "It is decidedly so",
         "Without a doubt",
-        "Yes – definitely",
+        "Yes \u2013 definitely",
         "You may rely on it",
         "As I see it, yes",
         "Most likely",
@@ -29,19 +29,21 @@ public class EightBallCommand : ICommand
         "Very doubtful"
     ];
 
+    private readonly string[] _responses;
     private readonly IAiProvider? _aiProvider;
     private readonly Random _random = new();
 
     public string Name => "8ball";
 
-    public EightBallCommand(IAiProvider? aiProvider = null)
+    public EightBallCommand(string[]? responses = null, IAiProvider? aiProvider = null)
     {
+        _responses = responses is { Length: > 0 } ? responses : DefaultResponses;
         _aiProvider = aiProvider;
     }
 
     public async Task<CommandResult> ExecuteAsync(CommandContext context, CancellationToken cancellationToken = default)
     {
-        string baseResponse = Responses[_random.Next(Responses.Length)];
+        string baseResponse = _responses[_random.Next(_responses.Length)];
 
         if (_aiProvider is { IsAvailable: true })
         {

@@ -1,13 +1,43 @@
+using System.Text.Json;
 using StarterPack.Commands;
 using StarterPack.Core.Interfaces;
 using StarterPack.Core.Models;
 
+string baseDir = AppContext.BaseDirectory;
+
+// Load appsettings.json
+string settingsPath = Path.Combine(baseDir, "appsettings.json");
+using var settingsDoc = JsonDocument.Parse(File.ReadAllText(settingsPath));
+string locale = settingsDoc.RootElement
+    .GetProperty("App")
+    .GetProperty("DefaultLocale")
+    .GetString() ?? "en";
+
+// Load locale file
+string localePath = Path.Combine(baseDir, "locales", $"{locale}.json");
+if (!File.Exists(localePath))
+{
+    Console.WriteLine($"[warn] Locale file not found: {localePath} — falling back to en");
+    localePath = Path.Combine(baseDir, "locales", "en.json");
+}
+
+using var localeDoc = JsonDocument.Parse(File.ReadAllText(localePath));
+
+string[] eightBallResponses = localeDoc.RootElement
+    .GetProperty("commands")
+    .GetProperty("8ball")
+    .GetProperty("responses")
+    .EnumerateArray()
+    .Select(x => x.GetString()!)
+    .ToArray();
+
+// Register commands
 var commands = new Dictionary<string, ICommand>(StringComparer.OrdinalIgnoreCase)
 {
-    ["8ball"] = new EightBallCommand()
+    ["8ball"] = new EightBallCommand(eightBallResponses)
 };
 
-Console.WriteLine("Streamer.bot Runner — type !<command> [input] or 'exit' to quit");
+Console.WriteLine($"Streamer.bot Runner [{locale}] — type !<command> [input] or 'exit' to quit");
 Console.WriteLine($"Available commands: {string.Join(", ", commands.Keys.Select(k => $"!{k}"))}");
 Console.WriteLine();
 
