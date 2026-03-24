@@ -2387,7 +2387,7 @@ def main():
     if queue_key not in queues_config:
         raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
     queue_def = queues_config[queue_key]
-    queue_id = str(uuid.uuid4())
+    queue_id = queue_def["id"]
 
     code = build_eightball_code(responses, language)
     action_id, command_id, action = make_action(
@@ -2413,7 +2413,7 @@ def main():
     if queue_key not in queues_config:
         raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
     queue_def = queues_config[queue_key]
-    queue_id = str(uuid.uuid4())
+    queue_id = queue_def["id"]
 
     code = build_flipcoin_code(flip_heads, flip_tails, flip_win, flip_loss, flip_no_choice)
     action_id, command_id, action = make_action(
@@ -2437,7 +2437,7 @@ def main():
     if queue_key not in queues_config:
         raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
     queue_def = queues_config[queue_key]
-    queue_id = str(uuid.uuid4())
+    queue_id = queue_def["id"]
 
     code = build_joke_code(joke_fallbacks, language, empty_prompt, topic_prompt)
     action_id, command_id, action = make_action(
@@ -2458,7 +2458,7 @@ def main():
     if queue_key not in queues_config:
         raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
     queue_def = queues_config[queue_key]
-    queue_id = str(uuid.uuid4())
+    queue_id = queue_def["id"]
 
     code = build_fortune_code(fortune_responses)
     action_id, command_id, action = make_action(
@@ -2479,7 +2479,7 @@ def main():
     if queue_key not in queues_config:
         raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
     queue_def = queues_config[queue_key]
-    queue_id = str(uuid.uuid4())
+    queue_id = queue_def["id"]
 
     code = build_lurk_code(lurk_messages)
     action_id, command_id, action = make_action(
@@ -2501,7 +2501,7 @@ def main():
     if queue_key not in queues_config:
         raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
     queue_def = queues_config[queue_key]
-    queue_id = str(uuid.uuid4())
+    queue_id = queue_def["id"]
 
     clip_creating      = clip_data["creating"]
     clip_not_available = clip_data["notAvailable"]
@@ -2521,7 +2521,7 @@ def main():
     if queue_key not in queues_config:
         raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
     queue_def = queues_config[queue_key]
-    queue_id = str(uuid.uuid4())
+    queue_id = queue_def["id"]
 
     action_id, command_id, action = build_shoutout_action(
         cmd["trigger"], cmd["group"], queue_id,
@@ -2538,7 +2538,7 @@ def main():
     if queue_key not in queues_config:
         raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
     queue_def = queues_config[queue_key]
-    queue_id = str(uuid.uuid4())
+    queue_id = queue_def["id"]
 
     action_id, command_id, action = build_settitle_action(cmd["trigger"], cmd["group"], queue_id)
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
@@ -2552,7 +2552,7 @@ def main():
     if queue_key not in queues_config:
         raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
     queue_def = queues_config[queue_key]
-    queue_id = str(uuid.uuid4())
+    queue_id = queue_def["id"]
 
     action_id, command_id, action = build_setgame_action(
         cmd["trigger"], cmd["group"], queue_id,
@@ -2569,7 +2569,7 @@ def main():
     if queue_key not in queues_config:
         raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
     queue_def = queues_config[queue_key]
-    queue_id = str(uuid.uuid4())
+    queue_id = queue_def["id"]
 
     action_id, command_id, action = build_accountage_action(
         cmd["trigger"], cmd["group"], queue_id, aa_data["notAvailable"],
@@ -2584,7 +2584,7 @@ def main():
     if queue_key not in queues_config:
         raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
     queue_def = queues_config[queue_key]
-    queue_id = str(uuid.uuid4())
+    queue_id = queue_def["id"]
     # followage not-available message reuses accountage's (or we use a generic fallback)
     followage_na = locale_data["commands"]["accountage"]["notAvailable"].replace("!accountage", "!followage")
 
@@ -2601,7 +2601,7 @@ def main():
     if queue_key not in queues_config:
         raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
     queue_def = queues_config[queue_key]
-    queue_id = str(uuid.uuid4())
+    queue_id = queue_def["id"]
     uptime_na = "@%user% !uptime is not available on this platform D:"
 
     action_id, command_id, action = build_uptime_action(
@@ -2618,7 +2618,7 @@ def main():
     if queue_key not in queues_config:
         raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
     queue_def = queues_config[queue_key]
-    queue_id = str(uuid.uuid4())
+    queue_id = queue_def["id"]
 
     action_id, command_id, action = build_time_action(
         cmd["trigger"], cmd["group"], queue_id,
@@ -2636,7 +2636,7 @@ def main():
         if queue_key not in queues_config:
             raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
         queue_def = queues_config[queue_key]
-        queue_id = str(uuid.uuid4())
+        queue_id = queue_def["id"]
 
         action_id, command_id, action = build_time_action(
             cmd["trigger"], cmd["group"], queue_id,
@@ -2652,7 +2652,7 @@ def main():
     if queue_key not in queues_config:
         raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
     queue_def = queues_config[queue_key]
-    queue_id = str(uuid.uuid4())
+    queue_id = queue_def["id"]
 
     action_id, command_id, action = build_translate_action(cmd["trigger"], cmd["group"], queue_id)
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
@@ -2666,7 +2666,7 @@ def main():
     if queue_key not in queues_config:
         raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
     queue_def = queues_config[queue_key]
-    queue_id = str(uuid.uuid4())
+    queue_id = queue_def["id"]
 
     action_id, command_id, action = build_sacrifice_action(
         cmd["trigger"], cmd["group"], queue_id,
@@ -2683,7 +2683,7 @@ def main():
     if queue_key not in queues_config:
         raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
     queue_def = queues_config[queue_key]
-    queue_id = str(uuid.uuid4())
+    queue_id = queue_def["id"]
 
     action_id, command_id, action = build_russianroulette_action(
         cmd["trigger"], cmd["group"], queue_id,
@@ -2701,7 +2701,7 @@ def main():
     if queue_key not in queues_config:
         raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
     queue_def = queues_config[queue_key]
-    queue_id = str(uuid.uuid4())
+    queue_id = queue_def["id"]
 
     action_id, command_id, action = build_time_action(
         cmd["trigger"], cmd["group"], queue_id,
@@ -2717,7 +2717,7 @@ def main():
     if queue_key not in queues_config:
         raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
     queue_def = queues_config[queue_key]
-    queue_id = str(uuid.uuid4())
+    queue_id = queue_def["id"]
 
     action_id, command_id, action = build_scene_action(cmd["trigger"], cmd["group"], queue_id)
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
@@ -2731,7 +2731,7 @@ def main():
     if queue_key not in queues_config:
         raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
     queue_def = queues_config[queue_key]
-    queue_id = str(uuid.uuid4())
+    queue_id = queue_def["id"]
 
     code = build_oracle_code(
         oracle_data["styles"],

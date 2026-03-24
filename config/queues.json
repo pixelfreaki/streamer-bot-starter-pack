@@ -1,30 +1,36 @@
 {
   "ai": {
+    "id": "1a6e6898-584f-41e5-8bd4-2fc298bab51c",
     "name": "AI Commands",
     "blocking": false,
     "description": "Commands that call AI providers (OpenAI, AI_Licia). Non-blocking — HTTP calls are async."
   },
   "moderation": {
+    "id": "b6a8250e-cf63-4dda-870f-6de3adee6db6",
     "name": "Moderation",
     "blocking": true,
     "description": "Mod actions (ban, timeout, etc.). Blocking — actions must complete in order."
   },
   "info": {
+    "id": "dd893b29-3909-40ae-886e-ce83b4b2847d",
     "name": "Info",
     "blocking": false,
     "description": "Informational commands (!setup, !mic, !discord, etc.). Non-blocking."
   },
   "fun": {
+    "id": "577ff4b2-1555-4336-be37-c3138001c572",
     "name": "Fun",
     "blocking": false,
     "description": "Fun commands without AI (!flipcoin, !fortune, etc.). Non-blocking."
   },
   "obs": {
+    "id": "75a36fb9-2845-4666-ba43-f6eaf36addb8",
     "name": "OBS",
     "blocking": true,
     "description": "OBS scene/source control. Blocking — scene changes must be sequential."
   },
   "stream": {
+    "id": "5bc2d906-8695-4228-86fe-afa868366cc5",
     "name": "Stream",
     "blocking": false,
     "description": "Stream management (clips, markers, etc.). Non-blocking."
