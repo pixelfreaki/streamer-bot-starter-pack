@@ -1714,7 +1714,7 @@ public class CPHInline
             return false;
         }}
 
-        CPH.SendMessage($"{cs_msg}");
+        CPH.TwitchAnnounce($"{cs_msg}", false, "purple");
         return true;
     }}
 }}"""
