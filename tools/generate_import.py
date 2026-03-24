@@ -1688,7 +1688,7 @@ public class CPHInline
             TwitchUserInfo user = CPH.TwitchGetUserInfoByLogin(input0);
             if (user == null)
             {{
-                CPH.SendMessage($"@{{userName}} I have no idea who {{input0}} is WutFace");
+                CPH.TwitchAnnounce($"@{{userName}} I have no idea who {{input0}} is WutFace", false, "purple");
                 return false;
             }}
             targetLogin  = user.UserLogin;
@@ -1704,13 +1704,13 @@ public class CPHInline
         }}
         catch (Exception ex)
         {{
-            CPH.SendMessage($"@{{userName}} Could not get account age for {{resolvedUser}} WutFace ({{ex.Message}})");
+            CPH.TwitchAnnounce($"@{{userName}} Could not get account age for {{resolvedUser}} WutFace ({{ex.Message}})", false, "purple");
             return false;
         }}
 
         if (string.IsNullOrEmpty(accountAge) || accountAge.StartsWith("Error"))
         {{
-            CPH.SendMessage($"@{{userName}} Could not get account age for {{resolvedUser}} WutFace");
+            CPH.TwitchAnnounce($"@{{userName}} Could not get account age for {{resolvedUser}} WutFace", false, "purple");
             return false;
         }}
 

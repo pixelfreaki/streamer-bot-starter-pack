@@ -398,7 +398,7 @@
       "notAvailable": "@%user% !setgame is not available on this platform D:"
     },
     "accountage": {
-      "message": "/me %inputUser% was born %accountAge% ago",
+      "message": "/me @%inputUser% was born %accountAge% ago",
       "notAvailable": "@%user% !accountage is not available on this platform D:"
     },
     "time": {
