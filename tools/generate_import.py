@@ -1655,6 +1655,7 @@ TRANSLATE_REFERENCES = [
 
 ACCOUNTAGE_CSHARP = """\
 using System;
+using System.Net;
 public class CPHInline
 {
     public bool Execute()
@@ -1663,45 +1664,38 @@ public class CPHInline
         CPH.TryGetArg("userName", out string userName);
         CPH.TryGetArg("user", out string displayName);
 
-        string createdAtStr = "";
+        string targetLogin;
         string resolvedUser;
 
         if (string.IsNullOrEmpty(input0))
         {
-            // Self: Streamer.bot provides %createdAt% for the invoking user in the event context.
-            resolvedUser = displayName;
-            CPH.TryGetArg("createdAt", out createdAtStr);
+            targetLogin   = userName;
+            resolvedUser  = displayName;
         }
         else
         {
-            // Target: validate user exists, get display name.
-            // %targetCreatedAt% would be available if a type-50 sub-action ran before this block.
             TwitchUserInfo user = CPH.TwitchGetUserInfoByLogin(input0);
             if (user == null)
             {
                 CPH.SendAction($"@{userName} I have no idea who {input0} is WutFace");
                 return false;
             }
+            targetLogin  = user.UserLogin;
             resolvedUser = user.UserName;
-            CPH.TryGetArg("targetCreatedAt", out createdAtStr);
         }
 
-        if (string.IsNullOrEmpty(createdAtStr))
-            return false;
+        string url = $"https://decapi.me/twitch/accountage/{targetLogin}?precision=4";
+        string accountAge;
+        using (var client = new WebClient())
+        {
+            accountAge = client.DownloadString(url).Trim();
+        }
 
-        DateTime created;
-        if (!DateTime.TryParse(createdAtStr, out created))
+        if (string.IsNullOrEmpty(accountAge) || accountAge.StartsWith("Error"))
+        {
+            CPH.SendAction($"@{userName} Could not retrieve account age for {resolvedUser} WutFace");
             return false;
-
-        created = created.ToUniversalTime();
-        DateTime now = DateTime.UtcNow;
-        int years = now.Year - created.Year;
-        int months = now.Month - created.Month;
-        if (now.Day < created.Day) months--;
-        if (months < 0) { years--; months += 12; }
-        string accountAge = years > 0
-            ? $"{years} year{(years != 1 ? "s" : "")} and {months} month{(months != 1 ? "s" : "")}"
-            : $"{months} month{(months != 1 ? "s" : "")}";
+        }
 
         CPH.SetArgument("inputUser", resolvedUser);
         CPH.SetArgument("accountAge", accountAge);
