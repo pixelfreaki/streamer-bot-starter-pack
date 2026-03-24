@@ -13,18 +13,22 @@ out/
 *.sln.docstates
 
 # =========================
-# Python (for build/tools)
+# Python (build/tools only)
 # =========================
 __pycache__/
-*.py[cod]
-*$py.class
+*.pyc
 
 venv/
 .venv/
 
-# Environment variables
+# =========================
+# Environment / secrets
+# =========================
 .env
 .env.*
+
+# Local overrides (do NOT commit secrets)
+appsettings.Development.json
 
 # =========================
 # Build / Generated artifacts
@@ -45,16 +49,16 @@ streamerbot_plan.md
 logs/
 
 # =========================
-# OS files
-# =========================
-.DS_Store
-Thumbs.db
-
-# =========================
 # IDE / Editor
 # =========================
 .vscode/
 .idea/
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
 
 # =========================
 # Temp / cache
@@ -65,11 +69,6 @@ Thumbs.db
 .cache/
 
 # =========================
-# Secrets / local config
+# Local config (non-shareable)
 # =========================
 setup.yaml
-
-# =========================
-# Optional (uncomment if needed)
-# =========================
-# *.generated.json

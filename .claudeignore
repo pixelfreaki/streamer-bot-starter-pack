@@ -1,0 +1,66 @@
+# =========================
+# 🚫 Ignore build artifacts (C#)
+# =========================
+bin/
+obj/
+out/
+
+# =========================
+# 🚫 Ignore generated outputs
+# =========================
+generated/
+build/
+dist/
+
+streamerbot_import.txt
+commands.csv
+streamerbot_plan.md
+
+# =========================
+# 🚫 Ignore logs
+# =========================
+*.log
+logs/
+
+# =========================
+# 🚫 Ignore environment / secrets
+# =========================
+.env
+.env.*
+setup.yaml
+
+# =========================
+# 🚫 Ignore Python leftovers (if any)
+# =========================
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# =========================
+# 🚫 Ignore IDE / OS noise
+# =========================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# =========================
+# 🚫 Ignore package / temp files
+# =========================
+*.tmp
+*.temp
+*.bak
+
+# =========================
+# 🧠 KEEP CLAUDE FOCUSED ON:
+# =========================
+# DO NOT IGNORE:
+# csharp/
+# csharp/Commands/
+# csharp/Core/
+# csharp/Services/
+# locales/
+# config/
+# templates/
+# src/ (if used)

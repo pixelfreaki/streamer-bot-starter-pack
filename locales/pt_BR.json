@@ -1,0 +1,18 @@
+{
+  "commands": {
+    "8ball": {
+      "responses": [
+        "Sim, definitivamente.",
+        "Não conte com isso.",
+        "Pergunte novamente mais tarde.",
+        "É certo.",
+        "Muito duvidoso.",
+        "Sem dúvida.",
+        "Minhas fontes dizem não.",
+        "Perspectivas não são boas.",
+        "Tudo indica que sim.",
+        "Resposta nebulosa, tente novamente."
+      ]
+    }
+  }
+}

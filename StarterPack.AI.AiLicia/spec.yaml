@@ -1,0 +1,1200 @@
+openapi: 3.0.3
+info:
+  title: ai_licia Public Api
+  description: |-
+    This API provides endpoints to feed data to ai_licia, so she can ingest them, and react accordingly. 
+    
+    
+    
+    
+    Some useful links:
+    - [Getting started with ai_licia](https://www.getailicia.com/post/discover-ai_licia-the-twitch-ai-companion)
+  contact:
+    email: contact@novasquare.io
+
+  version: 1.3.0
+
+servers:
+  - url: https://api.getailicia.com
+tags:
+  - name: Event Stream
+    description: Real-time event streaming endpoints
+  - name: events
+    description: Feed contextual data to ai_licia
+  - name: generate
+    description: Trigger a reaction from ai_licia
+  - name: characters
+    description: Manage ai_licia characters for your channel
+  - name: channels
+    description: Read runtime status for channels controlled by your API key
+  - name: streams
+    description: Control ai_licia presence on your live stream chat
+paths:
+  /v1/characters:
+    get:
+      tags:
+        - characters
+      summary: List available characters
+      description: |
+        Returns the list of characters owned by the streamer whose API key is used in the `Authorization` header.
+
+        Each entry only includes the public metadata (identifier, display name, and short description).
+      operationId: listCharacters
+      security:
+        - api_key: [ ]
+      responses:
+        '200':
+          description: Characters available to the authenticated streamer
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CharacterSummary'
+              examples:
+                default:
+                  summary: Character collection
+                  value:
+                    - id: char_123
+                      name: Captain Vibes
+                      description: Energetic persona that keeps hype levels high.
+                      isActive: true
+                    - id: char_456
+                      name: Cozy Willow
+                      description: Chill storyteller for quiet late-night streams.
+                      isActive: false
+        '401':
+          description: Unauthorized - Missing or invalid API key (no response body)
+
+
+  /v1/characters/{characterId}/active:
+    put:
+      tags:
+        - characters
+      summary: Set the active character
+      description: |
+        Marks the provided character as the active persona for the authenticated streamer.
+
+        Only characters owned by the API key owner can be activated.
+      operationId: setActiveCharacter
+      parameters:
+        - name: characterId
+          in: path
+          required: true
+          description: Identifier of the character to make active.
+          schema:
+            type: string
+      security:
+        - api_key: [ ]
+      responses:
+        '204':
+          description: Character successfully marked as active
+        '401':
+          description: Unauthorized - Missing or invalid API key (no response body)
+        '403':
+          description: Forbidden - Character does not belong to the authenticated streamer (no response body)
+        '404':
+          description: Character not found (no response body)
+
+
+  /v1/channels/status:
+    get:
+      tags:
+        - channels
+      summary: Get channel runtime status
+      description: |
+        Returns runtime status for channels controlled by the API key owner.
+        Each entry includes only channel name, primary flag, live status, and AI-in-chat status.
+      operationId: getChannelRuntimeStatus
+      security:
+        - api_key: [ ]
+      responses:
+        '200':
+          description: Runtime status for all accessible channels.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PublicChannelStatus'
+              examples:
+                default:
+                  summary: Example status payload
+                  value:
+                    - channelName: mychannel
+                      isPrimary: true
+                      isLive: true
+                      isAiInChat: true
+                    - channelName: mysecondchannel
+                      isPrimary: false
+                      isLive: false
+                      isAiInChat: false
+        '401':
+          description: Unauthorized - Missing or invalid API key (no response body)
+
+  /v1/streams/{channelName}:
+    parameters:
+      - name: channelName
+        in: path
+        required: true
+        description: Channel handle the API key controls (typically your primary channel).
+        schema:
+          type: string
+    post:
+      tags:
+        - streams
+      summary: Request ai_licia to join chat
+      description: |
+        Requests ai_licia to join the specified channel. The call waits up to 10 seconds for the confirmation event
+        and returns the resulting join status.
+      operationId: joinStreamPresence
+      parameters:
+        - name: mode
+          in: query
+          required: false
+          description: Join mode. Use `LIVE` for normal joins, or `TEST` to run a demo-style test join.
+          schema:
+            $ref: '#/components/schemas/PublicJoinMode'
+      security:
+        - api_key: [ ]
+      responses:
+        '200':
+          description: Join request accepted; payload describes the final status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JoinChannelResponse'
+              examples:
+                joined:
+                  summary: Successful join
+                  value:
+                    success: true
+                    message: AI successfully joined channel
+                    joinedAt: 1739982392000
+                    channelId: ch_123
+                already_present:
+                  summary: Already joined
+                  value:
+                    success: true
+                    message: AI already in channel
+                    alreadyJoined: true
+                timed_out:
+                  summary: Timed out waiting for confirmation
+                  value:
+                    success: false
+                    message: Join request sent but AI join confirmation timed out after 10 seconds
+                    timeout: true
+                    joinRequestId: req_123
+                test_mode_joined:
+                  summary: Successful test-mode join
+                  value:
+                    success: true
+                    message: AI successfully joined channel in test mode
+                    joinedAt: 1739982392000
+                    channelId: ch_123
+        '400':
+          description: Invalid mode value (no response body)
+        '401':
+          description: Unauthorized - Missing or invalid API key (no response body)
+        '403':
+          description: Forbidden - Channel not associated with the API key or subscription missing (no response body)
+        '404':
+          description: Channel not found for the API key owner (no response body)
+    delete:
+      tags:
+        - streams
+      summary: Request ai_licia to leave chat
+      description: |
+        Sends a leave request for the specified channel. The request is processed asynchronously.
+      operationId: leaveStreamPresence
+      security:
+        - api_key: [ ]
+      responses:
+        '202':
+          description: Leave request accepted (no response body)
+        '401':
+          description: Unauthorized - Missing or invalid API key (no response body)
+        '403':
+          description: Forbidden - Channel not associated with the API key (no response body)
+        '404':
+          description: Channel not found for the API key owner (no response body)
+
+  /v1/events:
+    post:
+      tags:
+        - events
+      summary: Feed data to ai_licia
+      description: Feed data to ai_licia to be added to her context.
+      operationId: events
+      requestBody:
+        description: Create a new event
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Event'
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+
+        '400':
+          description: Invalid input
+        '401':
+          description: Unauthorized Not allowed to send events for this channel.
+        '422':
+          description: Unprocessable Entity Content exceeds the 700-character limit.
+      security:
+        - api_key: []
+
+
+
+  /v1/events/generations:
+    post:
+      tags:
+        - generate
+      summary: Trigger a reaction from ai_licia
+      description: ''
+      operationId: generate
+      requestBody:
+        description: Create a new event
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventGeneration'
+        required: true
+      responses:
+        '200':
+          description: successful operation
+        '400':
+          description: Invalid input
+        '401':
+          description: Unauthorized Not allowed to send events for this channel.
+        '422':
+          description: Unprocessable Entity Content exceeds the 300-character limit.
+        '429':
+          description: Too many requests
+
+      security:
+        - api_key: []
+  /v1/events/chat/messages/stream:
+    get:
+      summary: Public Chat Message Stream
+      description: |
+        Server-Sent Events (SSE) endpoint that streams real-time chat messages for the authenticated streamer's primary channel.
+
+        This public endpoint is secured with the channel API key (provide it in the `Authorization` header as `Bearer <API_KEY>`).
+
+        **Access requirement:** the streamer must have an active Flex, Unlimited, or Ultimate subscription.
+
+        ## Payload
+        Each `message` event contains:
+        - `username` â€“ Author of the chat message (viewer, streamer, or AI)
+        - `content` â€“ Message text
+        - `role` â€“ One of `Mod`, `VIP`, `AI`, `Viewer`, `Streamer`
+        - `isSub` â€“ Whether the chatter is a current subscriber
+        - `sentDateTime` â€“ UTC timestamp
+
+        A periodic SSE `:ping` comment is sent every 30 seconds to keep the connection alive.
+      operationId: streamPublicChatMessages
+      tags:
+        - Event Stream
+      parameters:
+        - name: roles
+          in: query
+          required: false
+          description: |
+            Optional list of roles to include. Repeat the parameter for multiple values (e.g. `roles=Mod&roles=AI`).
+            When omitted, all chat messages are streamed.
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - Mod
+                - VIP
+                - AI
+                - Viewer
+                - Streamer
+          style: form
+          explode: true
+      security:
+        - api_key: [ ]
+      responses:
+        '200':
+          description: Successful connection to the public chat stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: SSE stream containing `message` events with `PublicChatMessage` payloads.
+              examples:
+                viewer_message:
+                  summary: Viewer chat message
+                  value: |
+                    id: 123e4567-e89b-12d3-a456-426614174000
+                    event: message
+                    data: {"username":"viewer42","content":"Let's go!","role":"Viewer","isSub":true,"sentDateTime":"2025-02-18T21:15:22Z"}
+                ai_message:
+                  summary: AI response
+                  value: |
+                    id: 223e4567-e89b-12d3-a456-426614174111
+                    event: message
+                    data: {"username":"ailicia","content":"I'll cover that in a moment!","role":"AI","isSub":false,"sentDateTime":"2025-02-18T21:15:30Z"}
+                ping_event:
+                  summary: Keep-alive ping comment
+                  value: |
+                    :ping
+        '401':
+          description: Unauthorized - Missing or invalid API key (no response body)
+        '403':
+          description: Forbidden - Requires an active Flex, Unlimited, or Ultimate subscription (no response body)
+        '404':
+          description: Streamer or channel not found for provided API key (no response body)
+        '500':
+          description: Internal Server Error (no response body)
+  /v1/eventsub/stream:
+    get:
+      summary: Unified EventSub Stream
+      description: |
+        Subscribe to the consolidated Server-Sent Events (SSE) stream for chat, AI, moderation, channel, system, and character events.
+
+        Use the `types` query string to filter to a subset of event keys (for example, `chat.message,ai.tts.generated`). The SSE `event`
+        name matches the `type` value within the payload envelope (see `EventSubEvent` schema).
+      operationId: streamEventSub
+      tags:
+        - Event Stream
+      parameters:
+        - name: types
+          in: query
+          required: false
+          description: |
+            Comma-separated list of event keys to include (e.g. `chat.message,ai.tts.generated`). When omitted, all events are delivered.
+          schema:
+            type: string
+        - name: channelId
+          in: query
+          required: false
+          description: Target a specific channel when the API key controls multiple.
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque resume token for future replay support.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Connection established; SSE frames stream until closed.
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/EventSubEvent'
+              description: Stream of SSE frames where the SSE `data` field contains a JSON envelope.
+              examples:
+                chat_message:
+                  summary: Chat message event
+                  value:
+                    id: evt_chat_msg_1
+                    type: chat.message
+                    timestamp: '2025-02-18T21:15:22Z'
+                    channel:
+                      id: ch_123
+                      name: mychannel
+                      platform: TWITCH
+                    payload:
+                      id: msg_1
+                      username: viewer42
+                      message: Let's go!
+                      language: en
+                      platform: TWITCH
+                      isSubscriber: true
+                      isVip: false
+                      isModerator: false
+                      sentDateTime: '2025-02-18T21:15:22Z'
+        '401':
+          description: Unauthorized - Missing or invalid API key (no response body)
+        '403':
+          description: Forbidden - Subscription level does not include EventSub (no response body)
+        '404':
+          description: Channel not found for the provided API key (no response body)
+        '500':
+          description: Internal Server Error (no response body)
+      security:
+        - api_key: [ ]
+
+components:
+  schemas:
+    Event:
+      required:
+        - eventType
+        - data
+      type: object
+      properties:
+
+        data:
+          $ref: '#/components/schemas/EventContent'
+
+
+        eventType:
+          type: string
+          description: Type of the event sent
+          enum:
+            - GAME_EVENT
+
+    EventContent:
+      required:
+        - channelName
+        - content
+      type: object
+      properties:
+        channelName:
+          type: string
+          description: The name of the channel you want to send events for. Should be the one matching the API key.
+          example: jellabn
+        content:
+          type: string
+          description: The data you want ai_licia to process and use in chat.
+          example: "altitude (feet): 18.021114034125176, longitude: -58.408335967526185 "
+          maxLength: 700
+        ttl:
+          type: integer
+          format: int64   # Assuming the TTL is represented in seconds
+          description: Time-to-Live (TTL) in seconds. Represents the duration for which content will be valid. If null or not specified, the content will not expire.
+          example: 90
+          nullable: true
+
+
+
+
+    EventGeneration:
+      required:
+        - eventType
+        - data
+      type: object
+      properties:
+
+        data:
+          $ref: '#/components/schemas/EventContentGeneration'
+
+
+        eventType:
+          type: string
+          description: Type of the event sent
+          enum:
+            - GAME_EVENT
+
+    EventContentGeneration:
+      required:
+        - eventType
+        - data
+      type: object
+      properties:
+        channelName:
+          type: string
+          description: The name of the channel you want to send events for. Should be the one matching the API key.
+          example: jellabn
+        content:
+          type: string
+          example: "Plane landed succesful"
+          description: The data you want ai_licia to react to with her generation.
+          maxLength: 300
+        features:
+          $ref: '#/components/schemas/GenerationFeatures'
+          description: Optional feature flags to enable extra processing for this generation request.
+    GenerationFeatures:
+      type: object
+      description: Feature toggles for the generation pipeline. Any omitted field uses its default value.
+      properties:
+        vision:
+          type: boolean
+          description: Enable vision processing for the event when applicable.
+          default: false
+        web_search:
+          type: boolean
+          description: Enable web search processing for the event when applicable.
+          default: false
+        commands:
+          type: boolean
+          description: Enable command execution processing for the event when applicable.
+          default: false
+        memory:
+          type: boolean
+          description: Enable memory processing for the event when applicable.
+          default: false
+        tts:
+          type: boolean
+          description: Enable text-to-speech generation when applicable (subject to existing TTS rules).
+          default: true
+    CharacterSummary:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - isActive
+      properties:
+        id:
+          type: string
+          description: Unique identifier of the character.
+          example: char_123
+        name:
+          type: string
+          description: Display name of the character.
+          example: Captain Vibes
+        description:
+          type: string
+          description: Short public description of the character persona.
+          example: Energetic hype persona that keeps the crowd excited.
+        isActive:
+          type: boolean
+          description: Indicates whether this character is currently active for the streamer.
+    JoinChannelResponse:
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          description: Indicates whether the request was successful.
+        message:
+          type: string
+          description: Human readable status message.
+        alreadyJoined:
+          type: boolean
+          description: True when ai_licia was already present in the channel.
+        requiresSubscription:
+          type: boolean
+          description: True when the join request is blocked because the account has no credits or subscription.
+        timeout:
+          type: boolean
+          description: True when confirmation was not received within 10 seconds.
+        joinedAt:
+          type: integer
+          format: int64
+          description: Epoch milliseconds when the AI joined, if known.
+          nullable: true
+        channelId:
+          type: string
+          description: Identifier of the channel that was joined.
+          nullable: true
+        joinRequestId:
+          type: string
+          description: Identifier of the join request emitted to the orchestrator.
+          nullable: true
+    PublicJoinMode:
+      type: string
+      description: Join mode for chat presence requests.
+      enum:
+        - LIVE
+        - TEST
+      default: LIVE
+      example: LIVE
+    PublicChannelStatus:
+      type: object
+      required:
+        - channelName
+        - isPrimary
+        - isLive
+        - isAiInChat
+      properties:
+        channelName:
+          type: string
+          description: Public channel handle.
+          example: mychannel
+        isPrimary:
+          type: boolean
+          description: True if this is the account's primary channel.
+        isLive:
+          type: boolean
+          description: True if the channel is currently live.
+        isAiInChat:
+          type: boolean
+          description: True if ai_licia is currently in the channel chat.
+    Platform:
+      type: string
+      description: Source platform (e.g. TWITCH, TIKTOK, KICK, YOUTUBE).
+      enum:
+        - TWITCH
+        - TIKTOK
+        - KICK
+        - YOUTUBE
+      example: TWITCH
+    EventSubChannelRef:
+      type: object
+      required:
+        - id
+        - name
+        - platform
+      properties:
+        id:
+          type: string
+          description: Unique channel identifier.
+          example: ch_123
+        name:
+          type: string
+          description: Public channel handle.
+          example: mychannel
+        platform:
+          $ref: '#/components/schemas/Platform'
+    EventSubStreamRef:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          description: Identifier of the live stream session.
+          example: st_456
+    EventSubEnvelopeBase:
+      type: object
+      required:
+        - id
+        - type
+        - timestamp
+        - channel
+        - payload
+      properties:
+        id:
+          type: string
+          description: Unique delivery identifier for the event.
+        type:
+          type: string
+          description: Event key (matches the SSE `event` name).
+          enum:
+            - chat.message
+            - chat.ai_message
+            - chat.first_message
+            - ai.thoughts
+            - ai.tts.generated
+            - channel.event
+            - channel.go_live
+            - channel.go_offline
+            - ai.moderation
+            - api.event
+            - system.join
+            - system.left
+            - character.updated
+        version:
+          type: string
+          description: Optional schema version for the payload.
+          example: "2025-02-01"
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp when the event was emitted.
+        channel:
+          $ref: '#/components/schemas/EventSubChannelRef'
+        stream:
+          $ref: '#/components/schemas/EventSubStreamRef'
+        payload:
+          type: object
+          description: Event-specific payload.
+        meta:
+          type: object
+          description: Additional metadata specific to the event type.
+          additionalProperties: true
+    EventSubEvent:
+      description: ai_licia EventSub SSE envelope.
+      oneOf:
+        - $ref: '#/components/schemas/EventSubChatMessageEvent'
+        - $ref: '#/components/schemas/EventSubChatAiMessageEvent'
+        - $ref: '#/components/schemas/EventSubChatFirstMessageEvent'
+        - $ref: '#/components/schemas/EventSubAiThoughtsEvent'
+        - $ref: '#/components/schemas/EventSubAiTtsGeneratedEvent'
+        - $ref: '#/components/schemas/EventSubChannelEvent'
+        - $ref: '#/components/schemas/EventSubChannelGoLiveEvent'
+        - $ref: '#/components/schemas/EventSubChannelGoOfflineEvent'
+        - $ref: '#/components/schemas/EventSubAiModerationEvent'
+        - $ref: '#/components/schemas/EventSubApiEvent'
+        - $ref: '#/components/schemas/EventSubSystemJoinEvent'
+        - $ref: '#/components/schemas/EventSubSystemLeftEvent'
+        - $ref: '#/components/schemas/EventSubCharacterUpdatedEvent'
+      discriminator:
+        propertyName: type
+        mapping:
+          chat.message: '#/components/schemas/EventSubChatMessageEvent'
+          chat.ai_message: '#/components/schemas/EventSubChatAiMessageEvent'
+          chat.first_message: '#/components/schemas/EventSubChatFirstMessageEvent'
+          ai.thoughts: '#/components/schemas/EventSubAiThoughtsEvent'
+          ai.tts.generated: '#/components/schemas/EventSubAiTtsGeneratedEvent'
+          channel.event: '#/components/schemas/EventSubChannelEvent'
+          channel.go_live: '#/components/schemas/EventSubChannelGoLiveEvent'
+          channel.go_offline: '#/components/schemas/EventSubChannelGoOfflineEvent'
+          ai.moderation: '#/components/schemas/EventSubAiModerationEvent'
+          api.event: '#/components/schemas/EventSubApiEvent'
+          system.join: '#/components/schemas/EventSubSystemJoinEvent'
+          system.left: '#/components/schemas/EventSubSystemLeftEvent'
+          character.updated: '#/components/schemas/EventSubCharacterUpdatedEvent'
+    EventSubChatMessageEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventSubEnvelopeBase'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - chat.message
+            payload:
+              $ref: '#/components/schemas/EventSubChatMessagePayload'
+    EventSubChatAiMessageEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventSubEnvelopeBase'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - chat.ai_message
+            payload:
+              $ref: '#/components/schemas/EventSubChatAiMessagePayload'
+    EventSubChatFirstMessageEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventSubEnvelopeBase'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - chat.first_message
+            payload:
+              $ref: '#/components/schemas/EventSubChatFirstMessagePayload'
+    EventSubAiThoughtsEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventSubEnvelopeBase'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - ai.thoughts
+            payload:
+              $ref: '#/components/schemas/EventSubAiThoughtsPayload'
+    EventSubAiTtsGeneratedEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventSubEnvelopeBase'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - ai.tts.generated
+            payload:
+              $ref: '#/components/schemas/EventSubAiTtsGeneratedPayload'
+    EventSubChannelEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventSubEnvelopeBase'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - channel.event
+            payload:
+              $ref: '#/components/schemas/EventSubChannelEventPayload'
+    EventSubChannelGoLiveEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventSubEnvelopeBase'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - channel.go_live
+            payload:
+              $ref: '#/components/schemas/EventSubChannelGoLivePayload'
+    EventSubChannelGoOfflineEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventSubEnvelopeBase'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - channel.go_offline
+            payload:
+              $ref: '#/components/schemas/EventSubChannelGoOfflinePayload'
+    EventSubAiModerationEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventSubEnvelopeBase'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - ai.moderation
+            payload:
+              $ref: '#/components/schemas/EventSubAiModerationPayload'
+    EventSubApiEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventSubEnvelopeBase'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - api.event
+            payload:
+              $ref: '#/components/schemas/EventSubApiPayload'
+    EventSubSystemJoinEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventSubEnvelopeBase'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - system.join
+            payload:
+              $ref: '#/components/schemas/EventSubSystemJoinPayload'
+    EventSubSystemLeftEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventSubEnvelopeBase'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - system.left
+            payload:
+              $ref: '#/components/schemas/EventSubSystemLeftPayload'
+    EventSubCharacterUpdatedEvent:
+      allOf:
+        - $ref: '#/components/schemas/EventSubEnvelopeBase'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - character.updated
+            payload:
+              $ref: '#/components/schemas/EventSubCharacterUpdatedPayload'
+    EventSubChatMessagePayload:
+      type: object
+      required:
+        - id
+        - username
+        - message
+        - language
+        - platform
+        - isSubscriber
+        - isVip
+        - isModerator
+        - sentDateTime
+      properties:
+        id:
+          type: string
+          description: Unique identifier of the chat message.
+        username:
+          type: string
+          description: Display name of the chatter.
+        message:
+          type: string
+          description: Text body of the chat message.
+        language:
+          type: string
+          description: ISO language code detected for the message.
+          example: en
+        platform:
+          $ref: '#/components/schemas/Platform'
+        isSubscriber:
+          type: boolean
+        isVip:
+          type: boolean
+        isModerator:
+          type: boolean
+        sentDateTime:
+          type: string
+          format: date-time
+          description: UTC timestamp when the message was sent.
+    EventSubChatAiMessagePayload:
+      type: object
+      required:
+        - id
+        - username
+        - message
+        - target
+        - targetRole
+        - shouldGenerateTtsMessage
+        - sentDateTime
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+          description: AI persona display name.
+        message:
+          type: string
+        target:
+          type: string
+          description: Username the AI is addressing or `chat`.
+        targetRole:
+          type: string
+          description: Role of the target (e.g. VIEWER, MOD, VIP).
+        shouldGenerateTtsMessage:
+          type: boolean
+        characterId:
+          type: string
+          description: Identifier of the active character, if any.
+          nullable: true
+        tone:
+          type: string
+          description: Optional tone label.
+        sentDateTime:
+          type: string
+          format: date-time
+    EventSubMemoryFragment:
+      type: object
+      required:
+        - id
+        - name
+        - facts
+        - updated
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        facts:
+          type: string
+        updated:
+          type: string
+          format: date-time
+    EventSubChatFirstMessagePayload:
+      type: object
+      required:
+        - username
+        - sentDateTime
+      properties:
+        memory:
+          allOf:
+            - $ref: '#/components/schemas/EventSubMemoryFragment'
+          nullable: true
+        greeting:
+          type: string
+          description: Optional greeting generated from the memory.
+        username:
+          type: string
+        sentDateTime:
+          type: string
+          format: date-time
+    EventSubAiThoughtsPayload:
+      type: object
+      required:
+        - reasoning
+        - shouldAnswer
+        - compiledFromMultiple
+        - sentDateTime
+      properties:
+        reasoning:
+          type: string
+        shouldAnswer:
+          type: boolean
+        compiledFromMultiple:
+          type: boolean
+        sentDateTime:
+          type: string
+          format: date-time
+    EventSubAiTtsGeneratedPayload:
+      type: object
+      required:
+        - messageId
+        - username
+        - textToSpeech
+        - audioFormat
+        - generationTimeMs
+        - audioSizeBytes
+        - ttsStreamUrl
+        - sentDateTime
+      properties:
+        messageId:
+          type: string
+        username:
+          type: string
+        textToSpeech:
+          type: string
+        audioFormat:
+          type: string
+          description: Audio content type (e.g. mp3, wav).
+          example: mp3
+        generationTimeMs:
+          type: integer
+          format: int32
+          description: Time taken to generate audio in milliseconds.
+        audioSizeBytes:
+          type: integer
+          format: int32
+          description: Size of the generated audio payload in bytes.
+        ttsStreamUrl:
+          type: string
+          format: uri
+          description: URL to the dedicated TTS SSE stream.
+        sentDateTime:
+          type: string
+          format: date-time
+    EventSubChannelEventPayload:
+      type: object
+      required:
+        - eventType
+        - sentDateTime
+      properties:
+        eventType:
+          type: string
+          description: Channel event type (e.g. FOLLOW, SUBSCRIPTION, RAID).
+        username:
+          type: string
+          nullable: true
+        gifter:
+          type: string
+          nullable: true
+        count:
+          type: integer
+          format: int32
+          nullable: true
+        value:
+          type: integer
+          format: int32
+          nullable: true
+        raidViewers:
+          type: integer
+          format: int32
+          nullable: true
+        message:
+          type: string
+          description: Optional message associated with the channel event.
+        sentDateTime:
+          type: string
+          format: date-time
+    EventSubChannelGoLivePayload:
+      type: object
+      required:
+        - sentDateTime
+      properties:
+        sentDateTime:
+          type: string
+          format: date-time
+    EventSubChannelGoOfflinePayload:
+      type: object
+      required:
+        - sentDateTime
+      properties:
+        sentDateTime:
+          type: string
+          format: date-time
+    EventSubModerationCategoryScore:
+      type: object
+      required:
+        - flagged
+        - score
+      properties:
+        flagged:
+          type: boolean
+        score:
+          type: number
+          format: double
+    EventSubAiModerationPayload:
+      type: object
+      required:
+        - messageId
+        - username
+        - originalMessage
+        - isAppropriate
+        - categoriesScore
+        - moderationEnabled
+        - sentDateTime
+      properties:
+        messageId:
+          type: string
+        username:
+          type: string
+        originalMessage:
+          type: string
+        isAppropriate:
+          type: boolean
+        categoriesScore:
+          type: object
+          description: Map of category name to moderation scores.
+          additionalProperties:
+            $ref: '#/components/schemas/EventSubModerationCategoryScore'
+        moderationEnabled:
+          type: boolean
+        sentDateTime:
+          type: string
+          format: date-time
+    EventSubApiPayload:
+      type: object
+      required:
+        - eventType
+        - content
+        - shouldGenerate
+      properties:
+        eventType:
+          type: string
+        content:
+          type: string
+        shouldGenerate:
+          type: boolean
+        ttl:
+          type: integer
+          format: int32
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+    EventSubSystemJoinPayload:
+      type: object
+      required:
+        - channelId
+        - channelName
+        - sentDateTime
+      properties:
+        channelId:
+          type: string
+        channelName:
+          type: string
+        sentDateTime:
+          type: string
+          format: date-time
+    EventSubSystemLeftPayload:
+      type: object
+      required:
+        - channelId
+        - channelName
+        - sentDateTime
+      properties:
+        channelId:
+          type: string
+        channelName:
+          type: string
+        sentDateTime:
+          type: string
+          format: date-time
+    EventSubCharacterUpdatedPayload:
+      type: object
+      required:
+        - characterId
+        - displayName
+        - sentDateTime
+      properties:
+        characterId:
+          type: string
+        displayName:
+          type: string
+        sentDateTime:
+          type: string
+          format: date-time
+  requestBodies:
+    Event:
+      description: Pet object that needs to be added to the store
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Event'
+
+  securitySchemes:
+    api_key:
+      type: apiKey
+      name: Authorization
+      in: header
