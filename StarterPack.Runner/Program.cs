@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
+using StarterPack.AI.AiLicia;
 using StarterPack.AI.OpenAI;
 using StarterPack.Commands;
 using StarterPack.Core.Interfaces;
@@ -117,11 +118,11 @@ if (aiProvider is not null)
 string? aiLiciaKey     = config["AiLicia:ApiKey"];
 string? aiLiciaChannel = config["AiLicia:ChannelName"];
 string  aiLiciaUrl     = config["AiLicia:BaseUrl"] ?? "https://api.getailicia.com";
-using StarterPack.AI.AiLicia.AiLiciaProvider aiLicia =
+using AiLiciaProvider aiLicia =
     !string.IsNullOrWhiteSpace(aiLiciaKey)     && aiLiciaKey     != "your_key_here" &&
     !string.IsNullOrWhiteSpace(aiLiciaChannel) && aiLiciaChannel != "your_channel_here"
-        ? new StarterPack.AI.AiLicia.AiLiciaProvider(aiLiciaKey, aiLiciaChannel, aiLiciaUrl)
-        : new StarterPack.AI.AiLicia.AiLiciaProvider(string.Empty, string.Empty, aiLiciaUrl);
+        ? new AiLiciaProvider(aiLiciaKey, aiLiciaChannel, aiLiciaUrl)
+        : new AiLiciaProvider(string.Empty, string.Empty, aiLiciaUrl);
 
 if (aiLicia.IsAvailable)
     Console.WriteLine("[AI_Licia] Connected — persona commands enabled");

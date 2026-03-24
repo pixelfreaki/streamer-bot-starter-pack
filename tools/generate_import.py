@@ -835,6 +835,143 @@ def make_native_action(name, group, queue_id, sub_actions):
     return action_id, command_id, action
 
 
+def build_oracle_code(styles, fallback, no_input, persona):
+    """
+    Generates inline C# for !oracle.
+
+    - Reads ai_licia_key from Streamer.bot persisted global variable.
+    - Reads broadcastUserName from args (no extra variable needed).
+    - If no question given, sends noInput message.
+    - Picks a random style prompt, replaces {user} and {text}, truncates to 300 chars.
+    - POSTs persona context to /v1/events (ttl=60) then triggers /v1/events/generations.
+    - Falls back to a local pool if ai_licia_key is missing or call fails.
+    """
+    styles_str   = "\n".join(f"        {csharp_literal(s)}," for s in styles)
+    fallback_str = "\n".join(f"        {csharp_literal(f)}," for f in fallback)
+
+    no_input_lit = csharp_literal(no_input)
+    persona_lit  = csharp_literal(persona)
+    user_ph      = csharp_literal("{user}")
+    text_ph      = csharp_literal("{text}")
+
+    bs    = csharp_literal('\\')
+    bs2   = csharp_literal('\\\\')
+    dq    = csharp_literal('"')
+    bs_dq = csharp_literal('\\"')
+    nl    = csharp_literal('\n')
+    bs_n  = csharp_literal('\\n')
+    cr    = csharp_literal('\r')
+    bs_r  = csharp_literal('\\r')
+
+    ev_open  = csharp_literal('{"eventType":"GAME_EVENT","data":{"channelName":"')
+    ev_cont  = csharp_literal('","content":"')
+    ev_ttl   = csharp_literal('","ttl":60}}')
+    ev_close = csharp_literal('"}}')
+
+    return f"""\
+using System;
+using System.Net;
+using System.Text;
+
+public class CPHInline
+{{
+    private static readonly string[] Styles = new[]
+    {{
+{styles_str}
+    }};
+
+    private static readonly string[] Fallback = new[]
+    {{
+{fallback_str}
+    }};
+
+    private const string Persona = {persona_lit};
+    private const string NoInput = {no_input_lit};
+    private const string BaseUrl = "https://api.getailicia.com";
+
+    public bool Execute()
+    {{
+        string user  = args.ContainsKey("user")     ? args["user"].ToString()             : "";
+        string input = args.ContainsKey("rawInput") ? args["rawInput"].ToString().Trim()  : "";
+
+        if (string.IsNullOrEmpty(input))
+        {{
+            CPH.SendMessage(NoInput.Replace({user_ph}, user));
+            return true;
+        }}
+
+        string apiKey = CPH.GetGlobalVar<string>("ai_licia_key", true);
+        string channelName = "";
+        CPH.TryGetArg("broadcastUserName", out channelName);
+
+        if (!string.IsNullOrEmpty(apiKey) && !string.IsNullOrEmpty(channelName))
+        {{
+            try
+            {{
+                var rng    = new Random();
+                string style  = Styles[rng.Next(Styles.Length)];
+                string prompt = style.Replace({user_ph}, user).Replace({text_ph}, input);
+                if (prompt.Length > 300) prompt = prompt.Substring(0, 300);
+
+                PostEvent(apiKey, channelName, Persona, withTtl: true);
+                PostEvent(apiKey, channelName, prompt,  withTtl: false);
+                return true;
+            }}
+            catch {{ }}
+        }}
+
+        var rng2    = new Random();
+        string message = Fallback[rng2.Next(Fallback.Length)].Replace({user_ph}, user);
+        CPH.SendMessage(message);
+        return true;
+    }}
+
+    private void PostEvent(string apiKey, string channelName, string content, bool withTtl)
+    {{
+        string path = withTtl ? "/v1/events" : "/v1/events/generations";
+        string body = withTtl
+            ? {ev_open} + Escape(channelName) + {ev_cont} + Escape(content) + {ev_ttl}
+            : {ev_open} + Escape(channelName) + {ev_cont} + Escape(content) + {ev_close};
+        using (var client = new WebClient())
+        {{
+            client.Headers["Authorization"] = "Bearer " + apiKey;
+            client.Headers["Content-Type"]  = "application/json";
+            client.UploadData(BaseUrl + path, "POST", Encoding.UTF8.GetBytes(body));
+        }}
+    }}
+
+    private static string Escape(string s)
+    {{
+        return s.Replace({bs}, {bs2})
+                .Replace({dq}, {bs_dq})
+                .Replace({nl}, {bs_n})
+                .Replace({cr}, {bs_r});
+    }}
+}}"""
+
+
+def build_oracle_action(name, group, code, queue_id):
+    """Action for AI_Licia commands: label + C# only, no chat switch (AI_Licia sends to chat)."""
+    action_id  = str(uuid.uuid4())
+    command_id = str(uuid.uuid4())
+    return action_id, command_id, {
+        "id": action_id, "queue": queue_id, "enabled": True,
+        "excludeFromHistory": False, "excludeFromPending": False,
+        "name": name, "group": group,
+        "alwaysRun": False, "randomAction": False, "concurrent": False,
+        "triggers": [
+            {"commandId": command_id, "id": str(uuid.uuid4()),
+             "type": 401, "enabled": True, "exclusions": []}
+        ],
+        "subActions": [
+            {"value": "Code", "color": "", "id": str(uuid.uuid4()), "weight": 0.0,
+             "type": 1009, "parentId": None, "enabled": True, "index": 0},
+            make_csharp_subaction(code, parent_id=None, index=1),
+        ],
+        "collapsedGroups": [],
+    }
+
+
 def build_shoutout_action(name, group, queue_id, unknown_msg, unknown_kick_msg,
                           twitch_msg, kick_msg, not_available_msg):
     """
@@ -2586,6 +2723,28 @@ def main():
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[scene] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
     _write_export(out_dir, "scene", queue_id, queue_def, action, command)
+
+    # ── oracle ─────────────────────────────────────────────────────────────────
+    oracle_data = locale_data["commands"]["oracle"]
+    cmd = commands_config["oracle"]
+    queue_key = cmd["queue"]
+    if queue_key not in queues_config:
+        raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
+    queue_def = queues_config[queue_key]
+    queue_id = str(uuid.uuid4())
+
+    code = build_oracle_code(
+        oracle_data["styles"],
+        oracle_data["fallback"],
+        oracle_data["noInput"],
+        oracle_data["persona"],
+    )
+    action_id, command_id, action = build_oracle_action(
+        cmd["trigger"], cmd["group"], code, queue_id
+    )
+    command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
+    print(f"[oracle] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
+    _write_export(out_dir, "oracle", queue_id, queue_def, action, command)
 
     print()
     print("To import:")

@@ -4,7 +4,7 @@ using StarterPack.Core.Interfaces;
 
 namespace StarterPack.AI.AiLicia;
 
-public class AiLiciaProvider : IAiProvider
+public class AiLiciaProvider : IAiProvider, IDisposable
 {
     private readonly string _apiKey;
     private readonly string _channelName;
@@ -52,5 +52,11 @@ public class AiLiciaProvider : IAiProvider
 
         // AI_Licia sends the response to chat directly — no text to return
         return null;
+    }
+
+    public void Dispose()
+    {
+        _httpClient.Dispose();
+        GC.SuppressFinalize(this);
     }
 }
