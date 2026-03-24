@@ -1,17 +1,20 @@
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
+using StarterPack.AI.OpenAI;
 using StarterPack.Commands;
 using StarterPack.Core.Interfaces;
 using StarterPack.Core.Models;
 
 string baseDir = AppContext.BaseDirectory;
 
-// Load appsettings.json
-string settingsPath = Path.Combine(baseDir, "appsettings.json");
-using var settingsDoc = JsonDocument.Parse(File.ReadAllText(settingsPath));
-string locale = settingsDoc.RootElement
-    .GetProperty("App")
-    .GetProperty("DefaultLocale")
-    .GetString() ?? "en";
+// Load layered config: appsettings.json < appsettings.Development.json
+IConfiguration config = new ConfigurationBuilder()
+    .SetBasePath(baseDir)
+    .AddJsonFile("appsettings.json", optional: false)
+    .AddJsonFile("appsettings.Development.json", optional: true)
+    .Build();
+
+string locale = config["App:DefaultLocale"] ?? "en";
 
 // Load locale file
 string localePath = Path.Combine(baseDir, "locales", $"{locale}.json");
@@ -22,7 +25,6 @@ if (!File.Exists(localePath))
 }
 
 using var localeDoc = JsonDocument.Parse(File.ReadAllText(localePath));
-
 string[] eightBallResponses = localeDoc.RootElement
     .GetProperty("commands")
     .GetProperty("8ball")
@@ -31,10 +33,19 @@ string[] eightBallResponses = localeDoc.RootElement
     .Select(x => x.GetString()!)
     .ToArray();
 
+// Build AI provider (optional)
+string? openAiKey = config["OpenAI:ApiKey"];
+IAiProvider? aiProvider = !string.IsNullOrWhiteSpace(openAiKey) && openAiKey != "your_key_here"
+    ? new OpenAiProvider(openAiKey)
+    : null;
+
+if (aiProvider is not null)
+    Console.WriteLine("[OpenAI] Connected — responses will be enhanced");
+
 // Register commands
 var commands = new Dictionary<string, ICommand>(StringComparer.OrdinalIgnoreCase)
 {
-    ["8ball"] = new EightBallCommand(eightBallResponses)
+    ["8ball"] = new EightBallCommand(eightBallResponses, aiProvider)
 };
 
 Console.WriteLine($"Streamer.bot Runner [{locale}] — type !<command> [input] or 'exit' to quit");

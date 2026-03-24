@@ -8,9 +8,15 @@
   <ItemGroup>
     <ProjectReference Include="..\StarterPack.Commands\StarterPack.Commands.csproj" />
     <ProjectReference Include="..\StarterPack.Core\StarterPack.Core.csproj" />
+    <ProjectReference Include="..\StarterPack.AI.OpenAI\StarterPack.AI.OpenAI.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="..\appsettings.json" CopyToOutputDirectory="PreserveNewest" Link="appsettings.json" />
+    <Content Include="..\appsettings.Development.json" CopyToOutputDirectory="PreserveNewest" Link="appsettings.Development.json" Condition="Exists('..\appsettings.Development.json')" />
     <Content Include="..\locales\**\*" CopyToOutputDirectory="PreserveNewest" Link="locales\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>
