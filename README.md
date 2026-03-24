@@ -1,19 +1,21 @@
 # Streamer.bot Starter Pack
 
-A C#-first command pack for [Streamer.bot](https://streamer.bot). Commands are config-driven, fully localized (English / Brazilian Portuguese), and optionally enhanced by OpenAI.
+A C#-first command pack for [Streamer.bot](https://streamer.bot). Commands are config-driven, fully localized (English / Brazilian Portuguese), and optionally enhanced by OpenAI or AI_Licia.
 
 ---
 
 ## Commands
 
+### Standard commands
+
 | Command | Description | AI? |
 |---|---|---|
-| `!8ball` | Magic 8-ball answer | Optional (enhanced) |
-| `!joke` | Random joke, supports a topic (`!joke cats`) | Optional (AI-generated) |
+| `!8ball` | Magic 8-ball answer | Optional (OpenAI enhanced) |
+| `!joke` | Random joke, supports a topic (`!joke cats`) | Optional (OpenAI generated) |
 | `!flipcoin` | Flip a coin — guess HEAD or TAIL | No |
 | `!fortune` | Random fortune message | No |
 | `!lurk` | Lurk message | No |
-| `!translate` | Translates a message | Optional |
+| `!translate` | Translates a message | Optional (OpenAI) |
 | `!russianroulette` | 1-in-6 chance of dying | No |
 | `!sacrifice` | Sacrifice a user | No |
 | `!clip` | Create a Twitch clip | No |
@@ -29,6 +31,20 @@ A C#-first command pack for [Streamer.bot](https://streamer.bot). Commands are c
 | `!gear` | Streamer's gear | No |
 | `!peripherals` | Streamer's peripherals | No |
 | `!commands` | List all available commands | No |
+
+### AI_Licia persona commands
+
+These commands are backed by [AI_Licia](https://www.getailicia.com). AI_Licia sends her response directly to chat — the bot just triggers her. Every command has a local fallback for when AI_Licia is offline.
+
+| Command | Description |
+|---|---|
+| `!oracle` | The Oracle answers your question |
+| `!horoscope` | Dark horoscope reading |
+| `!curse` | Cast a curse |
+| `!omen` | Reveal an omen |
+| `!tarot` | Tarot card reading |
+| `!judge` | Judge another viewer |
+| `!hex` | One viewer hexes another |
 
 ---
 
@@ -70,8 +86,6 @@ Supported values: `en`, `pt_BR`.
 dotnet test
 ```
 
-All 90 tests should pass.
-
 ---
 
 ## Run locally (optional)
@@ -82,7 +96,9 @@ The runner lets you test commands in a terminal before importing to Streamer.bot
 dotnet run --project StarterPack.Runner
 ```
 
-Then type commands like `!8ball will it rain?` or `!flipcoin head`.
+Then type commands like `!8ball will it rain?`, `!flipcoin head`, or `!oracle will I survive?`.
+
+AI_Licia commands show `[AI_Licia triggered — response will appear in chat]` in the runner since the response goes directly to Twitch chat.
 
 ---
 
@@ -112,11 +128,11 @@ Repeat for each command. You can import all of them or only the ones you need.
 
 ## OpenAI setup (optional)
 
-OpenAI enhances `!8ball` and `!joke`. Every command works without it — AI is never required.
+OpenAI enhances `!8ball`, `!joke`, and `!translate`. Every command works without it — AI is never required.
 
-### Step 1 — Set your API key
+### Step 1 — Set your API key (local runner)
 
-Create `appsettings.Development.json` in the project root (this file is gitignored):
+Create `appsettings.Development.json` in the project root (gitignored):
 
 ```json
 {
@@ -128,7 +144,7 @@ Create `appsettings.Development.json` in the project root (this file is gitignor
 
 ### Step 2 — Add the global variable in Streamer.bot
 
-The exported actions read the key from a Streamer.bot persisted global variable, so the key never lives in the import file itself.
+The exported actions read the key from a Streamer.bot persisted global variable.
 
 1. Open **Streamer.bot**
 2. Go to **Settings → Variables**
@@ -139,6 +155,39 @@ The exported actions read the key from a Streamer.bot persisted global variable,
 5. Click **Save**
 
 Once set, `!8ball` and `!joke` will use OpenAI automatically. If the variable is missing or the API call fails, both commands fall back to their local response pool.
+
+---
+
+## AI_Licia setup (optional)
+
+AI_Licia powers the persona commands (`!oracle`, `!horoscope`, `!curse`, `!omen`, `!tarot`, `!judge`, `!hex`). She sends her response directly to Twitch chat — the bot just triggers her.
+
+### Step 1 — Add the global variable in Streamer.bot
+
+1. Open **Streamer.bot**
+2. Go to **Settings → Variables**
+3. Click **Add** (persisted global variable)
+4. Set:
+   - **Name:** `ai_licia_key`
+   - **Value:** your AI_Licia API key
+5. Click **Save**
+
+The exported actions read `ai_licia_key` at runtime. The channel name is read automatically from Streamer.bot's built-in `broadcastUserName` argument — no additional variable needed.
+
+### Step 2 — Set your API key (local runner only)
+
+For local testing with the runner, add to `appsettings.Development.json`:
+
+```json
+{
+  "AiLicia": {
+    "ApiKey": "your-ailicia-key",
+    "ChannelName": "your_twitch_channel"
+  }
+}
+```
+
+When `AiLicia.ApiKey` and `AiLicia.ChannelName` are set, the runner triggers AI_Licia on persona commands. When not set, commands fall back to their local response pool.
 
 ---
 
