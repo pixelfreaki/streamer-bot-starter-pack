@@ -19,6 +19,20 @@ import uuid
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+
+def _stable(builder_result, cmd):
+    """Replace generated action/command IDs with stable ones from config/commands.json.
+
+    Every builder returns (action_id, command_id, action) using uuid4() for IDs.
+    This helper swaps those random IDs for the fixed ones stored in cmd, so
+    re-importing the same export never creates duplicates in Streamer.bot.
+    """
+    old_aid, old_cid, action = builder_result
+    aid = cmd["action_id"]
+    cid = cmd["command_id"]
+    patched = json.loads(json.dumps(action).replace(old_aid, aid).replace(old_cid, cid))
+    return aid, cid, patched
+
 SBAE_HEADER = b"SBAE"
 EXPORTED_FROM = "1.0.4"
 MINIMUM_VERSION = "1.0.0-alpha.1"
@@ -2783,7 +2797,7 @@ def main():
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[8ball] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
 
-    _write_export(out_dir, "8ball", queue_id, queue_def, action, command)
+    _write_export(out_dir, "8ball", queue_id, queue_def, action, command, commands_config)
 
     # ── flipcoin ───────────────────────────────────────────────────────────────
     flip_data     = locale_data["commands"]["flipcoin"]
@@ -2809,7 +2823,7 @@ def main():
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[flipcoin] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
 
-    _write_export(out_dir, "flipcoin", queue_id, queue_def, action, command)
+    _write_export(out_dir, "flipcoin", queue_id, queue_def, action, command, commands_config)
 
     # ── joke ───────────────────────────────────────────────────────────────────
     joke_data = locale_data["commands"]["joke"]
@@ -2833,7 +2847,7 @@ def main():
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[joke] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
 
-    _write_export(out_dir, "joke", queue_id, queue_def, action, command)
+    _write_export(out_dir, "joke", queue_id, queue_def, action, command, commands_config)
 
     # ── fortune ────────────────────────────────────────────────────────────────
     fortune_responses = locale_data["commands"]["fortune"]["responses"]
@@ -2854,7 +2868,7 @@ def main():
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[fortune] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
 
-    _write_export(out_dir, "fortune", queue_id, queue_def, action, command)
+    _write_export(out_dir, "fortune", queue_id, queue_def, action, command, commands_config)
 
     # ── lurk ───────────────────────────────────────────────────────────────────
     lurk_messages = locale_data["commands"]["lurk"]["responses"]
@@ -2875,7 +2889,7 @@ def main():
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[lurk] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
 
-    _write_export(out_dir, "lurk", queue_id, queue_def, action, command)
+    _write_export(out_dir, "lurk", queue_id, queue_def, action, command, commands_config)
 
     # ── clip ───────────────────────────────────────────────────────────────────
     clip_data = locale_data["commands"]["clip"]
@@ -2898,7 +2912,7 @@ def main():
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[clip] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
 
-    _write_export(out_dir, "clip", queue_id, queue_def, action, command)
+    _write_export(out_dir, "clip", queue_id, queue_def, action, command, commands_config)
 
     # ── shoutout ───────────────────────────────────────────────────────────────
     so_data = locale_data["commands"]["shoutout"]
@@ -2916,7 +2930,7 @@ def main():
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[shoutout] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    _write_export(out_dir, "shoutout", queue_id, queue_def, action, command)
+    _write_export(out_dir, "shoutout", queue_id, queue_def, action, command, commands_config)
 
     # ── settitle ───────────────────────────────────────────────────────────────
     cmd = commands_config["settitle"]
@@ -2929,7 +2943,7 @@ def main():
     action_id, command_id, action = build_settitle_action(cmd["trigger"], cmd["group"], queue_id)
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[settitle] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    _write_export(out_dir, "settitle", queue_id, queue_def, action, command)
+    _write_export(out_dir, "settitle", queue_id, queue_def, action, command, commands_config)
 
     # ── setgame ────────────────────────────────────────────────────────────────
     sg_data = locale_data["commands"]["setgame"]
@@ -2946,7 +2960,7 @@ def main():
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[setgame] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    _write_export(out_dir, "setgame", queue_id, queue_def, action, command)
+    _write_export(out_dir, "setgame", queue_id, queue_def, action, command, commands_config)
 
     # ── accountage ─────────────────────────────────────────────────────────────
     aa_data = locale_data["commands"]["accountage"]
@@ -2962,7 +2976,7 @@ def main():
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[accountage] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    _write_export(out_dir, "accountage", queue_id, queue_def, action, command)
+    _write_export(out_dir, "accountage", queue_id, queue_def, action, command, commands_config)
 
     # ── followage ──────────────────────────────────────────────────────────────
     cmd = commands_config["followage"]
@@ -2979,7 +2993,7 @@ def main():
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[followage] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    _write_export(out_dir, "followage", queue_id, queue_def, action, command)
+    _write_export(out_dir, "followage", queue_id, queue_def, action, command, commands_config)
 
     # ── uptime ─────────────────────────────────────────────────────────────────
     cmd = commands_config["uptime"]
@@ -2995,7 +3009,7 @@ def main():
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[uptime] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    _write_export(out_dir, "uptime", queue_id, queue_def, action, command)
+    _write_export(out_dir, "uptime", queue_id, queue_def, action, command, commands_config)
 
     # ── time ───────────────────────────────────────────────────────────────────
     time_data = locale_data["commands"]["time"]
@@ -3012,7 +3026,7 @@ def main():
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[time] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    _write_export(out_dir, "time", queue_id, queue_def, action, command)
+    _write_export(out_dir, "time", queue_id, queue_def, action, command, commands_config)
 
     # ── info commands (pc / gear / peripherals) ─────────────────────────────────
     for info_key in ("pc", "gear", "peripherals"):
@@ -3030,7 +3044,7 @@ def main():
         )
         command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
         print(f"[{info_key}] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-        _write_export(out_dir, info_key, queue_id, queue_def, action, command)
+        _write_export(out_dir, info_key, queue_id, queue_def, action, command, commands_config)
 
     # ── translate ──────────────────────────────────────────────────────────────
     cmd = commands_config["translate"]
@@ -3043,7 +3057,7 @@ def main():
     action_id, command_id, action = build_translate_action(cmd["trigger"], cmd["group"], queue_id)
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[translate] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    _write_export(out_dir, "translate", queue_id, queue_def, action, command)
+    _write_export(out_dir, "translate", queue_id, queue_def, action, command, commands_config)
 
     # ── sacrifice ──────────────────────────────────────────────────────────────
     sac_data = locale_data["commands"]["sacrifice"]
@@ -3060,7 +3074,7 @@ def main():
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[sacrifice] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    _write_export(out_dir, "sacrifice", queue_id, queue_def, action, command)
+    _write_export(out_dir, "sacrifice", queue_id, queue_def, action, command, commands_config)
 
     # ── russianroulette ────────────────────────────────────────────────────────
     rr_data = locale_data["commands"]["russianroulette"]
@@ -3077,7 +3091,7 @@ def main():
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[russianroulette] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    _write_export(out_dir, "russianroulette", queue_id, queue_def, action, command)
+    _write_export(out_dir, "russianroulette", queue_id, queue_def, action, command, commands_config)
 
     # ── commands ───────────────────────────────────────────────────────────────
     all_triggers = " ".join(sorted(commands_config[k]["trigger"] for k in commands_config))
@@ -3095,7 +3109,7 @@ def main():
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[commands] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    _write_export(out_dir, "commands", queue_id, queue_def, action, command)
+    _write_export(out_dir, "commands", queue_id, queue_def, action, command, commands_config)
 
     # ── scene ──────────────────────────────────────────────────────────────────
     cmd = commands_config["scene"]
@@ -3108,7 +3122,7 @@ def main():
     action_id, command_id, action = build_scene_action(cmd["trigger"], cmd["group"], queue_id)
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[scene] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    _write_export(out_dir, "scene", queue_id, queue_def, action, command)
+    _write_export(out_dir, "scene", queue_id, queue_def, action, command, commands_config)
 
     # ── oracle ─────────────────────────────────────────────────────────────────
     oracle_data = locale_data["commands"]["oracle"]
@@ -3130,7 +3144,7 @@ def main():
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[oracle] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    _write_export(out_dir, "oracle", queue_id, queue_def, action, command)
+    _write_export(out_dir, "oracle", queue_id, queue_def, action, command, commands_config)
 
     # ── horoscope ──────────────────────────────────────────────────────────────
     horoscope_data = locale_data["commands"]["horoscope"]
@@ -3152,7 +3166,7 @@ def main():
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[horoscope] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    _write_export(out_dir, "horoscope", queue_id, queue_def, action, command)
+    _write_export(out_dir, "horoscope", queue_id, queue_def, action, command, commands_config)
 
     # ── curse ──────────────────────────────────────────────────────────────────
     curse_data = locale_data["commands"]["curse"]
@@ -3174,7 +3188,7 @@ def main():
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[curse] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    _write_export(out_dir, "curse", queue_id, queue_def, action, command)
+    _write_export(out_dir, "curse", queue_id, queue_def, action, command, commands_config)
 
     # ── omen ───────────────────────────────────────────────────────────────────
     omen_data = locale_data["commands"]["omen"]
@@ -3195,7 +3209,7 @@ def main():
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[omen] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    _write_export(out_dir, "omen", queue_id, queue_def, action, command)
+    _write_export(out_dir, "omen", queue_id, queue_def, action, command, commands_config)
 
     # ── tarot ──────────────────────────────────────────────────────────────────
     tarot_data = locale_data["commands"]["tarot"]
@@ -3216,7 +3230,7 @@ def main():
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[tarot] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    _write_export(out_dir, "tarot", queue_id, queue_def, action, command)
+    _write_export(out_dir, "tarot", queue_id, queue_def, action, command, commands_config)
 
     # ── judge ──────────────────────────────────────────────────────────────────
     judge_data = locale_data["commands"]["judge"]
@@ -3238,7 +3252,7 @@ def main():
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[judge] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    _write_export(out_dir, "judge", queue_id, queue_def, action, command)
+    _write_export(out_dir, "judge", queue_id, queue_def, action, command, commands_config)
 
     # ── hex ────────────────────────────────────────────────────────────────────
     hex_data = locale_data["commands"]["hex"]
@@ -3260,7 +3274,7 @@ def main():
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[hex] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    _write_export(out_dir, "hex", queue_id, queue_def, action, command)
+    _write_export(out_dir, "hex", queue_id, queue_def, action, command, commands_config)
 
     print()
     print("To import:")
@@ -3280,7 +3294,17 @@ def main():
     print("  Falls back to local responses if the key is missing or on any error.")
 
 
-def _write_export(out_dir, name, queue_id, queue_def, action, command):
+def _write_export(out_dir, name, queue_id, queue_def, action, command, commands_config=None):
+    # Apply stable action/command IDs from config so re-imports don't create duplicates.
+    if commands_config and name in commands_config:
+        cmd_def = commands_config[name]
+        if "action_id" in cmd_def and "command_id" in cmd_def:
+            old_aid = action["id"]
+            old_cid = command["id"]
+            aid, cid = cmd_def["action_id"], cmd_def["command_id"]
+            action  = json.loads(json.dumps(action) .replace(old_aid, aid).replace(old_cid, cid))
+            command = json.loads(json.dumps(command).replace(old_aid, aid).replace(old_cid, cid))
+
     export = {
         "meta": {
             "name": "Streamer.bot Starter Pack",

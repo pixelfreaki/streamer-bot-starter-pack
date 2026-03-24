@@ -2,141 +2,197 @@
   "8ball": {
     "trigger": "!8ball",
     "queue": "ai",
-    "group": "Fun"
+    "group": "Fun",
+    "action_id": "85190f88-1fc9-4aef-9dcb-8aeadc9db121",
+    "command_id": "98cb1e28-2111-4cdc-9026-5fce648477f4"
   },
   "flipcoin": {
     "trigger": "!flipcoin",
     "queue": "fun",
-    "group": "Fun"
+    "group": "Fun",
+    "action_id": "e1b95f43-f892-4bf9-810d-cbb423dfbae1",
+    "command_id": "08cdab9f-f720-4644-a411-9813b7b0688e"
   },
   "joke": {
     "trigger": "!joke",
     "queue": "ai",
-    "group": "Fun"
+    "group": "Fun",
+    "action_id": "2313b3d9-96e2-4ad5-900f-ffac7576b4c2",
+    "command_id": "288d4f4b-2fc6-440c-95d6-93ebde2a3dee"
   },
   "fortune": {
     "trigger": "!fortune",
     "queue": "fun",
-    "group": "Fun"
+    "group": "Fun",
+    "action_id": "8650b656-1b16-4d50-b8ba-ce624ea932ce",
+    "command_id": "24316a1b-9721-45a8-994b-2bd402643f3b"
   },
   "lurk": {
     "trigger": "!lurk",
     "queue": "fun",
-    "group": "Fun"
+    "group": "Fun",
+    "action_id": "8b867baa-0833-45d9-bceb-cc10a1a3e59a",
+    "command_id": "4e2786ed-6da4-4b64-90a5-fd0e2946ae2f"
   },
   "clip": {
     "trigger": "!clip",
     "queue": "stream",
-    "group": "Stream"
+    "group": "Stream",
+    "action_id": "554bebc1-dfb0-4f67-b78b-cb5623760a16",
+    "command_id": "8374dd0d-2280-4385-9bec-f2472738e54c"
   },
   "commands": {
     "trigger": "!commands",
     "queue": "info",
-    "group": "Info"
+    "group": "Info",
+    "action_id": "cc6b0dac-5c7d-4e52-8d46-88ec045ac713",
+    "command_id": "c056d4a3-4ee1-44d9-949b-5e3c8ff56329"
   },
   "pc": {
     "trigger": "!pc",
     "queue": "info",
-    "group": "Info"
+    "group": "Info",
+    "action_id": "394cda86-1816-48b2-8f77-bf06788f44c4",
+    "command_id": "facc7a26-1d43-48b2-be18-56693dfc046b"
   },
   "gear": {
     "trigger": "!gear",
     "queue": "info",
-    "group": "Info"
+    "group": "Info",
+    "action_id": "0c4278ea-dfd3-4025-87d1-6fcf8e9d147e",
+    "command_id": "4a8dfb52-7db4-43bd-bfd9-cb9f123bf07f"
   },
   "peripherals": {
     "trigger": "!peripherals",
     "queue": "info",
-    "group": "Info"
+    "group": "Info",
+    "action_id": "00cb619a-c7fc-4f61-baae-b2eac09060a6",
+    "command_id": "fc96458d-dccc-43b9-ae02-d01ab71525f0"
   },
   "shoutout": {
     "trigger": "!shoutout",
     "queue": "stream",
-    "group": "Stream"
+    "group": "Stream",
+    "action_id": "50410c0c-9552-4f84-8f8b-9aae616f7b3d",
+    "command_id": "6374d011-7238-487c-b8e0-04aa2a677c8d"
   },
   "settitle": {
     "trigger": "!settitle",
     "queue": "stream",
-    "group": "Stream"
+    "group": "Stream",
+    "action_id": "1c4c691d-3c95-492f-8fbb-78ec3cdc3562",
+    "command_id": "2a56dca1-c9fe-40a1-af8a-3b77f493bf3a"
   },
   "setgame": {
     "trigger": "!setgame",
     "queue": "stream",
-    "group": "Stream"
+    "group": "Stream",
+    "action_id": "2a926f7b-1cc5-46ee-bc59-2785e29c3458",
+    "command_id": "0debd4b6-214e-4a0a-901f-0a4f8cb30d1c"
   },
   "accountage": {
     "trigger": "!accountage",
     "queue": "info",
-    "group": "Info"
+    "group": "Info",
+    "action_id": "b3e26f2b-9ba4-4558-82fd-be2d777078a4",
+    "command_id": "05109137-4e49-4562-bfe7-0fce4da666a3"
   },
   "followage": {
     "trigger": "!followage",
     "queue": "info",
-    "group": "Info"
+    "group": "Info",
+    "action_id": "77d9ed70-ae3f-41a8-a570-db0948e76322",
+    "command_id": "6a6086e4-4246-4fc3-84d8-bb3a916c34d5"
   },
   "uptime": {
     "trigger": "!uptime",
     "queue": "info",
-    "group": "Info"
+    "group": "Info",
+    "action_id": "4012ed69-bca6-4676-994b-6f339b071eb0",
+    "command_id": "1ccbefaa-ca8e-4795-ba14-da28ab3e4a64"
   },
   "time": {
     "trigger": "!time",
     "queue": "info",
-    "group": "Info"
+    "group": "Info",
+    "action_id": "1bda269a-3dc2-4a87-9e88-4aceec95e5ef",
+    "command_id": "a4d389e1-faec-4cff-b836-4bd48c37bb90"
   },
   "translate": {
     "trigger": "!translate",
     "queue": "ai",
-    "group": "Info"
+    "group": "Info",
+    "action_id": "6d7c37b7-a847-492d-b708-a422bb19dc7c",
+    "command_id": "446e2660-dbac-4c29-a7a7-11672a4f7780"
   },
   "sacrifice": {
     "trigger": "!sacrifice",
     "queue": "fun",
-    "group": "Fun"
+    "group": "Fun",
+    "action_id": "fb922e80-958d-48ae-b12c-9523e3bf540b",
+    "command_id": "2e87f0fb-c2e7-4d12-8207-55823c3648c2"
   },
   "russianroulette": {
     "trigger": "!russianroulette",
     "queue": "fun",
-    "group": "Fun"
+    "group": "Fun",
+    "action_id": "72ad746b-3022-4c38-8c77-cbfdfd706582",
+    "command_id": "164687f5-7703-439c-aa53-9b5777a39295"
   },
   "scene": {
     "trigger": "!scene",
     "queue": "obs",
-    "group": "OBS"
+    "group": "OBS",
+    "action_id": "afae9eb1-cf76-4b83-a4a9-0360e908131c",
+    "command_id": "1e5db48e-cdd2-404a-b95b-3d955c072989"
   },
   "oracle": {
     "trigger": "!oracle",
     "queue": "ai",
-    "group": "AI_Licia"
+    "group": "AI_Licia",
+    "action_id": "b70ca763-2978-483a-91d2-00d9ffe3e53d",
+    "command_id": "9336dfe9-a774-4372-9453-4d694f504534"
   },
   "horoscope": {
     "trigger": "!horoscope",
     "queue": "ai",
-    "group": "AI_Licia"
+    "group": "AI_Licia",
+    "action_id": "1d1ff1be-cc15-451e-9099-6f630ea091e7",
+    "command_id": "009867bf-4032-47eb-bf88-f0d2068b7e38"
   },
   "curse": {
     "trigger": "!curse",
     "queue": "ai",
-    "group": "AI_Licia"
+    "group": "AI_Licia",
+    "action_id": "ca8f8280-948d-4c84-b183-b2b3fa7db769",
+    "command_id": "8dca6771-deea-4d47-9ee8-0bd72535065f"
   },
   "omen": {
     "trigger": "!omen",
     "queue": "ai",
-    "group": "AI_Licia"
+    "group": "AI_Licia",
+    "action_id": "8abdd339-9564-4cb2-ab19-8658e3557dcf",
+    "command_id": "a271237b-4d7d-4984-b750-d3b5cbc90f56"
   },
   "tarot": {
     "trigger": "!tarot",
     "queue": "ai",
-    "group": "AI_Licia"
+    "group": "AI_Licia",
+    "action_id": "25f3e828-46ba-483f-9458-61ef257f2c42",
+    "command_id": "d09cbd90-41c1-4d8e-9826-db9f6e5ceb36"
   },
   "judge": {
     "trigger": "!judge",
     "queue": "ai",
-    "group": "AI_Licia"
+    "group": "AI_Licia",
+    "action_id": "a6143f09-83ad-4045-bb21-15cb6eb3f2e0",
+    "command_id": "a653df8f-2136-4d13-a0ee-fd8413dc8e4a"
   },
   "hex": {
     "trigger": "!hex",
     "queue": "ai",
-    "group": "AI_Licia"
+    "group": "AI_Licia",
+    "action_id": "ac505c0d-1b34-49f4-8e97-af5643a6336f",
+    "command_id": "aee3cb65-ce4b-4bf7-b4da-04ad5b95101b"
   }
 }
