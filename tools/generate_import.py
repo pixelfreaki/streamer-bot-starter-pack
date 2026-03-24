@@ -151,6 +151,9 @@ def make_action(name, group, code):
         "enabled": True,
         "random": False,
         "concurrent": True,
+        "queue": "",
+        "defaultQueue": False,
+        "queueTimeout": 0,
         "subActions": [
             {
                 "id": subaction_id,
@@ -158,8 +161,11 @@ def make_action(name, group, code):
                 "enabled": True,
                 "code": code,
                 "precompiled": False,
+                "compileErrors": None,
             }
         ],
+        "triggers": [],
+        "curves": [],
     }
 
 
@@ -177,6 +183,8 @@ def make_command(name, group, trigger, action_id):
         "isRegex": False,
         "cost": 0,
         "cooldown": {"global": 0, "user": 0},
+        "permissions": {"type": 0, "users": []},
+        "responses": [],
     }
 
 
@@ -203,26 +211,44 @@ def main():
         "type": "streamerbot",
         "actions": [action],
         "commands": [command],
+        "timeractions": [],
+        "timers": [],
+        "variables": [],
+        "triggers": [],
+        "settings": {},
     }
 
-    encoded = base64.b64encode(
-        json.dumps(export, ensure_ascii=False).encode("utf-8")
-    ).decode("utf-8")
+    json_str = json.dumps(export, ensure_ascii=False, indent=2)
 
-    output_path = os.path.join(ROOT, "streamerbot_import.txt")
-    with open(output_path, "w", encoding="utf-8") as f:
+    # Raw JSON file (import via file dialog)
+    json_path = os.path.join(ROOT, "streamerbot_import.json")
+    with open(json_path, "w", encoding="utf-8") as f:
+        f.write(json_str)
+    print(f"[done] written to streamerbot_import.json")
+
+    # Base64 file (import via paste dialog)
+    encoded = base64.b64encode(json_str.encode("utf-8")).decode("utf-8")
+    txt_path = os.path.join(ROOT, "streamerbot_import.txt")
+    with open(txt_path, "w", encoding="utf-8") as f:
         f.write(encoded)
-
     print(f"[done] written to streamerbot_import.txt")
+
     print()
-    print("To import:")
-    print("  1. Open Streamer.bot")
-    print("  2. Go to Actions tab > click Import (top right)")
-    print("  3. Paste the contents of streamerbot_import.txt")
-    print("  4. Click Import")
+    print("Import options:")
+    print()
+    print("  Option A — file import:")
+    print("    1. Open Streamer.bot")
+    print("    2. Actions tab -> right-click the action list -> Import")
+    print("    3. Select streamerbot_import.json")
+    print()
+    print("  Option B — paste import:")
+    print("    1. Open Streamer.bot")
+    print("    2. Actions tab -> Import button (top right)")
+    print("    3. Paste the contents of streamerbot_import.txt")
     print()
     print("Optional — to enable OpenAI enhancement:")
-    print('  In Streamer.bot, set a Global Variable named "openai_api_key" with your key.')
+    print('  In Streamer.bot go to Settings > Variables and add:')
+    print('  Name: openai_api_key  |  Value: your key  |  Persisted: true')
 
 
 if __name__ == "__main__":
