@@ -21,15 +21,19 @@ public class OpenAiProvider : IAiProvider
         _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
     }
 
-    public async Task<string?> EnhanceAsync(string prompt, CancellationToken cancellationToken = default)
+    public async Task<string?> EnhanceAsync(string prompt, string? systemPrompt = null, CancellationToken cancellationToken = default)
     {
         if (!IsAvailable)
             return null;
 
+        var messages = systemPrompt is not null
+            ? new[] { new { role = "system", content = systemPrompt }, new { role = "user", content = prompt } }
+            : new[] { new { role = "user", content = prompt } };
+
         var body = JsonSerializer.Serialize(new
         {
             model = Model,
-            messages = new[] { new { role = "user", content = prompt } },
+            messages,
             max_tokens = 100
         });
 
