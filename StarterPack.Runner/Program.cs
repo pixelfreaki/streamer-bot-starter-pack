@@ -133,6 +133,34 @@ string[] oracleStyles   = oracleElement.GetProperty("styles").EnumerateArray().S
 string[] oracleFallback = oracleElement.GetProperty("fallback").EnumerateArray().Select(x => x.GetString()!).ToArray();
 string   oracleNoInput  = oracleElement.GetProperty("noInput").GetString()!;
 
+var horoscopeElement     = commandsElement.GetProperty("horoscope");
+string[] horoscopeStyles   = horoscopeElement.GetProperty("styles").EnumerateArray().Select(x => x.GetString()!).ToArray();
+string[] horoscopeFallback = horoscopeElement.GetProperty("fallback").EnumerateArray().Select(x => x.GetString()!).ToArray();
+string   horoscopeNoInput  = horoscopeElement.GetProperty("noInput").GetString()!;
+
+var curseElement     = commandsElement.GetProperty("curse");
+string[] curseStyles   = curseElement.GetProperty("styles").EnumerateArray().Select(x => x.GetString()!).ToArray();
+string[] curseFallback = curseElement.GetProperty("fallback").EnumerateArray().Select(x => x.GetString()!).ToArray();
+string   curseNoInput  = curseElement.GetProperty("noInput").GetString()!;
+
+var omenElement     = commandsElement.GetProperty("omen");
+string[] omenStyles   = omenElement.GetProperty("styles").EnumerateArray().Select(x => x.GetString()!).ToArray();
+string[] omenFallback = omenElement.GetProperty("fallback").EnumerateArray().Select(x => x.GetString()!).ToArray();
+
+var tarotElement     = commandsElement.GetProperty("tarot");
+string[] tarotStyles   = tarotElement.GetProperty("styles").EnumerateArray().Select(x => x.GetString()!).ToArray();
+string[] tarotFallback = tarotElement.GetProperty("fallback").EnumerateArray().Select(x => x.GetString()!).ToArray();
+
+var judgeElement     = commandsElement.GetProperty("judge");
+string[] judgeStyles   = judgeElement.GetProperty("styles").EnumerateArray().Select(x => x.GetString()!).ToArray();
+string[] judgeFallback = judgeElement.GetProperty("fallback").EnumerateArray().Select(x => x.GetString()!).ToArray();
+string   judgeNoInput  = judgeElement.GetProperty("noInput").GetString()!;
+
+var hexElement     = commandsElement.GetProperty("hex");
+string[] hexStyles   = hexElement.GetProperty("styles").EnumerateArray().Select(x => x.GetString()!).ToArray();
+string[] hexFallback = hexElement.GetProperty("fallback").EnumerateArray().Select(x => x.GetString()!).ToArray();
+string   hexNoInput  = hexElement.GetProperty("noInput").GetString()!;
+
 // Register commands
 var commands = new Dictionary<string, ICommand>(StringComparer.OrdinalIgnoreCase)
 {
@@ -158,6 +186,12 @@ var commands = new Dictionary<string, ICommand>(StringComparer.OrdinalIgnoreCase
     ["russianroulette"] = new RussianRouletteCommand(rrDies, rrLives),
     ["scene"]          = new SceneCommand(),
     ["oracle"]         = new OracleCommand(oracleStyles, oracleFallback, oracleNoInput, aiLicia.IsAvailable ? aiLicia : null),
+    ["horoscope"]      = new HoroscopeCommand(horoscopeStyles, horoscopeFallback, horoscopeNoInput, aiLicia.IsAvailable ? aiLicia : null),
+    ["curse"]          = new CurseCommand(curseStyles, curseFallback, curseNoInput, aiLicia.IsAvailable ? aiLicia : null),
+    ["omen"]           = new OmenCommand(omenStyles, omenFallback, aiLicia.IsAvailable ? aiLicia : null),
+    ["tarot"]          = new TarotCommand(tarotStyles, tarotFallback, aiLicia.IsAvailable ? aiLicia : null),
+    ["judge"]          = new JudgeCommand(judgeStyles, judgeFallback, judgeNoInput, aiLicia.IsAvailable ? aiLicia : null),
+    ["hex"]            = new HexCommand(hexStyles, hexFallback, hexNoInput, aiLicia.IsAvailable ? aiLicia : null),
 };
 
 string cmdList = string.Join(" ", commands.Keys.Order().Select(k => $"!{k}"));

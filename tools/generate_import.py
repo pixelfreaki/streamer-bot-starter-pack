@@ -972,6 +972,335 @@ def build_oracle_action(name, group, code, queue_id):
     }
 
 
+def build_ailicia_useronly_code(styles, fallback, persona):
+    """
+    Generates inline C# for user-only AI_Licia commands (omen, tarot).
+
+    No input required — always picks a random style prompt with only {user}.
+    Falls back to local pool if ai_licia_key is missing.
+    """
+    styles_str   = "\n".join(f"        {csharp_literal(s)}," for s in styles)
+    fallback_str = "\n".join(f"        {csharp_literal(f)}," for f in fallback)
+
+    persona_lit  = csharp_literal(persona)
+    user_ph      = csharp_literal("{user}")
+
+    bs    = csharp_literal('\\')
+    bs2   = csharp_literal('\\\\')
+    dq    = csharp_literal('"')
+    bs_dq = csharp_literal('\\"')
+    nl    = csharp_literal('\n')
+    bs_n  = csharp_literal('\\n')
+    cr    = csharp_literal('\r')
+    bs_r  = csharp_literal('\\r')
+
+    ev_open  = csharp_literal('{"eventType":"GAME_EVENT","data":{"channelName":"')
+    ev_cont  = csharp_literal('","content":"')
+    ev_ttl   = csharp_literal('","ttl":60}}')
+    ev_close = csharp_literal('"}}')
+
+    return f"""\
+using System;
+using System.Net;
+using System.Text;
+
+public class CPHInline
+{{
+    private static readonly string[] Styles = new[]
+    {{
+{styles_str}
+    }};
+
+    private static readonly string[] Fallback = new[]
+    {{
+{fallback_str}
+    }};
+
+    private const string Persona = {persona_lit};
+    private const string BaseUrl = "https://api.getailicia.com";
+
+    public bool Execute()
+    {{
+        string user = args.ContainsKey("user") ? args["user"].ToString() : "";
+
+        string apiKey = CPH.GetGlobalVar<string>("ai_licia_key", true);
+        string channelName = "";
+        CPH.TryGetArg("broadcastUserName", out channelName);
+
+        if (!string.IsNullOrEmpty(apiKey) && !string.IsNullOrEmpty(channelName))
+        {{
+            try
+            {{
+                var rng   = new Random();
+                string prompt = Styles[rng.Next(Styles.Length)].Replace({user_ph}, user);
+                if (prompt.Length > 300) prompt = prompt.Substring(0, 300);
+
+                PostEvent(apiKey, channelName, Persona, withTtl: true);
+                PostEvent(apiKey, channelName, prompt,  withTtl: false);
+                return true;
+            }}
+            catch {{ }}
+        }}
+
+        var rng2    = new Random();
+        string message = Fallback[rng2.Next(Fallback.Length)].Replace({user_ph}, user);
+        CPH.SendMessage(message);
+        return true;
+    }}
+
+    private void PostEvent(string apiKey, string channelName, string content, bool withTtl)
+    {{
+        string path = withTtl ? "/v1/events" : "/v1/events/generations";
+        string body = withTtl
+            ? {ev_open} + Escape(channelName) + {ev_cont} + Escape(content) + {ev_ttl}
+            : {ev_open} + Escape(channelName) + {ev_cont} + Escape(content) + {ev_close};
+        using (var client = new WebClient())
+        {{
+            client.Headers["Authorization"] = "Bearer " + apiKey;
+            client.Headers["Content-Type"]  = "application/json";
+            client.UploadData(BaseUrl + path, "POST", Encoding.UTF8.GetBytes(body));
+        }}
+    }}
+
+    private static string Escape(string s)
+    {{
+        return s.Replace({bs}, {bs2})
+                .Replace({dq}, {bs_dq})
+                .Replace({nl}, {bs_n})
+                .Replace({cr}, {bs_r});
+    }}
+}}"""
+
+
+def build_ailicia_judge_code(styles, fallback, no_input, persona):
+    """
+    Generates inline C# for !judge.
+
+    - judge = user who invoked the command
+    - target = rawInput (stripped of leading @)
+    - noInput uses {judge}; styles/fallback use {judge} and {target}
+    """
+    styles_str   = "\n".join(f"        {csharp_literal(s)}," for s in styles)
+    fallback_str = "\n".join(f"        {csharp_literal(f)}," for f in fallback)
+
+    no_input_lit = csharp_literal(no_input)
+    persona_lit  = csharp_literal(persona)
+    judge_ph     = csharp_literal("{judge}")
+    target_ph    = csharp_literal("{target}")
+
+    bs    = csharp_literal('\\')
+    bs2   = csharp_literal('\\\\')
+    dq    = csharp_literal('"')
+    bs_dq = csharp_literal('\\"')
+    nl    = csharp_literal('\n')
+    bs_n  = csharp_literal('\\n')
+    cr    = csharp_literal('\r')
+    bs_r  = csharp_literal('\\r')
+
+    ev_open  = csharp_literal('{"eventType":"GAME_EVENT","data":{"channelName":"')
+    ev_cont  = csharp_literal('","content":"')
+    ev_ttl   = csharp_literal('","ttl":60}}')
+    ev_close = csharp_literal('"}}')
+
+    return f"""\
+using System;
+using System.Net;
+using System.Text;
+
+public class CPHInline
+{{
+    private static readonly string[] Styles = new[]
+    {{
+{styles_str}
+    }};
+
+    private static readonly string[] Fallback = new[]
+    {{
+{fallback_str}
+    }};
+
+    private const string Persona = {persona_lit};
+    private const string NoInput = {no_input_lit};
+    private const string BaseUrl = "https://api.getailicia.com";
+
+    public bool Execute()
+    {{
+        string judge  = args.ContainsKey("user")     ? args["user"].ToString()            : "";
+        string target = args.ContainsKey("rawInput") ? args["rawInput"].ToString().Trim() : "";
+        if (target.StartsWith("@")) target = target.Substring(1).Trim();
+
+        if (string.IsNullOrEmpty(target))
+        {{
+            CPH.SendMessage(NoInput.Replace({judge_ph}, judge));
+            return true;
+        }}
+
+        string apiKey = CPH.GetGlobalVar<string>("ai_licia_key", true);
+        string channelName = "";
+        CPH.TryGetArg("broadcastUserName", out channelName);
+
+        if (!string.IsNullOrEmpty(apiKey) && !string.IsNullOrEmpty(channelName))
+        {{
+            try
+            {{
+                var rng    = new Random();
+                string style  = Styles[rng.Next(Styles.Length)];
+                string prompt = style.Replace({judge_ph}, judge).Replace({target_ph}, target);
+                if (prompt.Length > 300) prompt = prompt.Substring(0, 300);
+
+                PostEvent(apiKey, channelName, Persona, withTtl: true);
+                PostEvent(apiKey, channelName, prompt,  withTtl: false);
+                return true;
+            }}
+            catch {{ }}
+        }}
+
+        var rng2    = new Random();
+        string message = Fallback[rng2.Next(Fallback.Length)]
+            .Replace({judge_ph}, judge).Replace({target_ph}, target);
+        CPH.SendMessage(message);
+        return true;
+    }}
+
+    private void PostEvent(string apiKey, string channelName, string content, bool withTtl)
+    {{
+        string path = withTtl ? "/v1/events" : "/v1/events/generations";
+        string body = withTtl
+            ? {ev_open} + Escape(channelName) + {ev_cont} + Escape(content) + {ev_ttl}
+            : {ev_open} + Escape(channelName) + {ev_cont} + Escape(content) + {ev_close};
+        using (var client = new WebClient())
+        {{
+            client.Headers["Authorization"] = "Bearer " + apiKey;
+            client.Headers["Content-Type"]  = "application/json";
+            client.UploadData(BaseUrl + path, "POST", Encoding.UTF8.GetBytes(body));
+        }}
+    }}
+
+    private static string Escape(string s)
+    {{
+        return s.Replace({bs}, {bs2})
+                .Replace({dq}, {bs_dq})
+                .Replace({nl}, {bs_n})
+                .Replace({cr}, {bs_r});
+    }}
+}}"""
+
+
+def build_ailicia_hex_code(styles, fallback, no_input, persona):
+    """
+    Generates inline C# for !hex.
+
+    - caster = user who invoked the command ({user} and {caster} both map to user)
+    - target = rawInput (stripped of leading @)
+    - noInput/fallback use {user}; styles use {caster} and {target}
+    """
+    styles_str   = "\n".join(f"        {csharp_literal(s)}," for s in styles)
+    fallback_str = "\n".join(f"        {csharp_literal(f)}," for f in fallback)
+
+    no_input_lit = csharp_literal(no_input)
+    persona_lit  = csharp_literal(persona)
+    user_ph      = csharp_literal("{user}")
+    caster_ph    = csharp_literal("{caster}")
+    target_ph    = csharp_literal("{target}")
+
+    bs    = csharp_literal('\\')
+    bs2   = csharp_literal('\\\\')
+    dq    = csharp_literal('"')
+    bs_dq = csharp_literal('\\"')
+    nl    = csharp_literal('\n')
+    bs_n  = csharp_literal('\\n')
+    cr    = csharp_literal('\r')
+    bs_r  = csharp_literal('\\r')
+
+    ev_open  = csharp_literal('{"eventType":"GAME_EVENT","data":{"channelName":"')
+    ev_cont  = csharp_literal('","content":"')
+    ev_ttl   = csharp_literal('","ttl":60}}')
+    ev_close = csharp_literal('"}}')
+
+    return f"""\
+using System;
+using System.Net;
+using System.Text;
+
+public class CPHInline
+{{
+    private static readonly string[] Styles = new[]
+    {{
+{styles_str}
+    }};
+
+    private static readonly string[] Fallback = new[]
+    {{
+{fallback_str}
+    }};
+
+    private const string Persona = {persona_lit};
+    private const string NoInput = {no_input_lit};
+    private const string BaseUrl = "https://api.getailicia.com";
+
+    public bool Execute()
+    {{
+        string user   = args.ContainsKey("user")     ? args["user"].ToString()            : "";
+        string target = args.ContainsKey("rawInput") ? args["rawInput"].ToString().Trim() : "";
+        if (target.StartsWith("@")) target = target.Substring(1).Trim();
+
+        if (string.IsNullOrEmpty(target))
+        {{
+            CPH.SendMessage(NoInput.Replace({user_ph}, user));
+            return true;
+        }}
+
+        string apiKey = CPH.GetGlobalVar<string>("ai_licia_key", true);
+        string channelName = "";
+        CPH.TryGetArg("broadcastUserName", out channelName);
+
+        if (!string.IsNullOrEmpty(apiKey) && !string.IsNullOrEmpty(channelName))
+        {{
+            try
+            {{
+                var rng    = new Random();
+                string style  = Styles[rng.Next(Styles.Length)];
+                string prompt = style.Replace({caster_ph}, user).Replace({target_ph}, target);
+                if (prompt.Length > 300) prompt = prompt.Substring(0, 300);
+
+                PostEvent(apiKey, channelName, Persona, withTtl: true);
+                PostEvent(apiKey, channelName, prompt,  withTtl: false);
+                return true;
+            }}
+            catch {{ }}
+        }}
+
+        var rng2    = new Random();
+        string message = Fallback[rng2.Next(Fallback.Length)]
+            .Replace({user_ph}, user).Replace({target_ph}, target);
+        CPH.SendMessage(message);
+        return true;
+    }}
+
+    private void PostEvent(string apiKey, string channelName, string content, bool withTtl)
+    {{
+        string path = withTtl ? "/v1/events" : "/v1/events/generations";
+        string body = withTtl
+            ? {ev_open} + Escape(channelName) + {ev_cont} + Escape(content) + {ev_ttl}
+            : {ev_open} + Escape(channelName) + {ev_cont} + Escape(content) + {ev_close};
+        using (var client = new WebClient())
+        {{
+            client.Headers["Authorization"] = "Bearer " + apiKey;
+            client.Headers["Content-Type"]  = "application/json";
+            client.UploadData(BaseUrl + path, "POST", Encoding.UTF8.GetBytes(body));
+        }}
+    }}
+
+    private static string Escape(string s)
+    {{
+        return s.Replace({bs}, {bs2})
+                .Replace({dq}, {bs_dq})
+                .Replace({nl}, {bs_n})
+                .Replace({cr}, {bs_r});
+    }}
+}}"""
+
+
 def build_shoutout_action(name, group, queue_id, unknown_msg, unknown_kick_msg,
                           twitch_msg, kick_msg, not_available_msg):
     """
@@ -2745,6 +3074,136 @@ def main():
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[oracle] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
     _write_export(out_dir, "oracle", queue_id, queue_def, action, command)
+
+    # ── horoscope ──────────────────────────────────────────────────────────────
+    horoscope_data = locale_data["commands"]["horoscope"]
+    cmd = commands_config["horoscope"]
+    queue_key = cmd["queue"]
+    if queue_key not in queues_config:
+        raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
+    queue_def = queues_config[queue_key]
+    queue_id = queue_def["id"]
+
+    code = build_oracle_code(
+        horoscope_data["styles"],
+        horoscope_data["fallback"],
+        horoscope_data["noInput"],
+        horoscope_data["persona"],
+    )
+    action_id, command_id, action = build_oracle_action(
+        cmd["trigger"], cmd["group"], code, queue_id
+    )
+    command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
+    print(f"[horoscope] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
+    _write_export(out_dir, "horoscope", queue_id, queue_def, action, command)
+
+    # ── curse ──────────────────────────────────────────────────────────────────
+    curse_data = locale_data["commands"]["curse"]
+    cmd = commands_config["curse"]
+    queue_key = cmd["queue"]
+    if queue_key not in queues_config:
+        raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
+    queue_def = queues_config[queue_key]
+    queue_id = queue_def["id"]
+
+    code = build_oracle_code(
+        curse_data["styles"],
+        curse_data["fallback"],
+        curse_data["noInput"],
+        curse_data["persona"],
+    )
+    action_id, command_id, action = build_oracle_action(
+        cmd["trigger"], cmd["group"], code, queue_id
+    )
+    command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
+    print(f"[curse] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
+    _write_export(out_dir, "curse", queue_id, queue_def, action, command)
+
+    # ── omen ───────────────────────────────────────────────────────────────────
+    omen_data = locale_data["commands"]["omen"]
+    cmd = commands_config["omen"]
+    queue_key = cmd["queue"]
+    if queue_key not in queues_config:
+        raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
+    queue_def = queues_config[queue_key]
+    queue_id = queue_def["id"]
+
+    code = build_ailicia_useronly_code(
+        omen_data["styles"],
+        omen_data["fallback"],
+        omen_data["persona"],
+    )
+    action_id, command_id, action = build_oracle_action(
+        cmd["trigger"], cmd["group"], code, queue_id
+    )
+    command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
+    print(f"[omen] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
+    _write_export(out_dir, "omen", queue_id, queue_def, action, command)
+
+    # ── tarot ──────────────────────────────────────────────────────────────────
+    tarot_data = locale_data["commands"]["tarot"]
+    cmd = commands_config["tarot"]
+    queue_key = cmd["queue"]
+    if queue_key not in queues_config:
+        raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
+    queue_def = queues_config[queue_key]
+    queue_id = queue_def["id"]
+
+    code = build_ailicia_useronly_code(
+        tarot_data["styles"],
+        tarot_data["fallback"],
+        tarot_data["persona"],
+    )
+    action_id, command_id, action = build_oracle_action(
+        cmd["trigger"], cmd["group"], code, queue_id
+    )
+    command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
+    print(f"[tarot] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
+    _write_export(out_dir, "tarot", queue_id, queue_def, action, command)
+
+    # ── judge ──────────────────────────────────────────────────────────────────
+    judge_data = locale_data["commands"]["judge"]
+    cmd = commands_config["judge"]
+    queue_key = cmd["queue"]
+    if queue_key not in queues_config:
+        raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
+    queue_def = queues_config[queue_key]
+    queue_id = queue_def["id"]
+
+    code = build_ailicia_judge_code(
+        judge_data["styles"],
+        judge_data["fallback"],
+        judge_data["noInput"],
+        judge_data["persona"],
+    )
+    action_id, command_id, action = build_oracle_action(
+        cmd["trigger"], cmd["group"], code, queue_id
+    )
+    command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
+    print(f"[judge] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
+    _write_export(out_dir, "judge", queue_id, queue_def, action, command)
+
+    # ── hex ────────────────────────────────────────────────────────────────────
+    hex_data = locale_data["commands"]["hex"]
+    cmd = commands_config["hex"]
+    queue_key = cmd["queue"]
+    if queue_key not in queues_config:
+        raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
+    queue_def = queues_config[queue_key]
+    queue_id = queue_def["id"]
+
+    code = build_ailicia_hex_code(
+        hex_data["styles"],
+        hex_data["fallback"],
+        hex_data["noInput"],
+        hex_data["persona"],
+    )
+    action_id, command_id, action = build_oracle_action(
+        cmd["trigger"], cmd["group"], code, queue_id
+    )
+    command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
+    print(f"[hex] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
+    _write_export(out_dir, "hex", queue_id, queue_def, action, command)
 
     print()
     print("To import:")

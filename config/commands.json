@@ -108,5 +108,35 @@
     "trigger": "!oracle",
     "queue": "ai",
     "group": "AI_Licia"
+  },
+  "horoscope": {
+    "trigger": "!horoscope",
+    "queue": "ai",
+    "group": "AI_Licia"
+  },
+  "curse": {
+    "trigger": "!curse",
+    "queue": "ai",
+    "group": "AI_Licia"
+  },
+  "omen": {
+    "trigger": "!omen",
+    "queue": "ai",
+    "group": "AI_Licia"
+  },
+  "tarot": {
+    "trigger": "!tarot",
+    "queue": "ai",
+    "group": "AI_Licia"
+  },
+  "judge": {
+    "trigger": "!judge",
+    "queue": "ai",
+    "group": "AI_Licia"
+  },
+  "hex": {
+    "trigger": "!hex",
+    "queue": "ai",
+    "group": "AI_Licia"
   }
 }
