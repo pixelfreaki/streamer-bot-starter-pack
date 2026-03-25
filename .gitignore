@@ -71,3 +71,4 @@ Thumbs.db
 # Local config (non-shareable)
 # =========================
 setup.yaml
+.claude/
