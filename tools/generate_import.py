@@ -1653,67 +1653,52 @@ TRANSLATE_REFERENCES = [
     "C:\\\\Windows\\\\Microsoft.NET\\\\Framework64\\\\v4.0.30319\\\\System.Web.dll",
 ]
 
-def _make_accountage_csharp(message_template):
-    """Build the accountage inline C# with the locale message baked in.
-    Converts %inputUser% / %accountAge% placeholders to C# string interpolation.
-    """
-    cs_msg = (message_template
-              .replace("%inputUser%", "{resolvedUser}")
-              .replace("%accountAge%", "{accountAge}"))
-    return f"""\
+# Step 1: resolve user, set %inputUser% and %inputUserName%, save return to %userFound%.
+ACCOUNTAGE_CSHARP_RESOLVE = """\
 using System;
-using System.Net;
 public class CPHInline
-{{
+{
     public bool Execute()
-    {{
+    {
         CPH.TryGetArg("input0", out string input0);
         CPH.TryGetArg("userName", out string userName);
         CPH.TryGetArg("user", out string displayName);
 
-        // Strip leading @ if the user typed e.g. !accountage @someone
         if (!string.IsNullOrEmpty(input0) && input0.StartsWith("@"))
             input0 = input0.Substring(1);
 
-        string targetLogin;
-        string resolvedUser;
-
         if (string.IsNullOrEmpty(input0))
-        {{
-            targetLogin  = userName;
-            resolvedUser = displayName;
-        }}
-        else
-        {{
-            TwitchUserInfo user = CPH.TwitchGetUserInfoByLogin(input0);
-            if (user == null)
-            {{
-                CPH.TwitchAnnounce($"@{{userName}} I have no idea who {{input0}} is WutFace", false, "purple");
-                return false;
-            }}
-            targetLogin  = user.UserLogin;
-            resolvedUser = user.UserName;
-        }}
+        {
+            CPH.SetArgument("inputUser", displayName);
+            CPH.SetArgument("inputUserName", userName);
+            return true;
+        }
 
-        string url = $"https://decapi.me/twitch/accountage/{{targetLogin}}?precision=4";
-        string accountAge;
-        try
-        {{
-            using (var client = new WebClient())
-                accountAge = client.DownloadString(url).Trim();
-        }}
-        catch (Exception ex)
-        {{
-            CPH.TwitchAnnounce($"@{{userName}} Could not get account age for {{resolvedUser}} WutFace ({{ex.Message}})", false, "purple");
+        TwitchUserInfo user = CPH.TwitchGetUserInfoByLogin(input0);
+        if (user == null)
+        {
+            CPH.TwitchAnnounce($"@{userName} I have no idea who {input0} is WutFace", false, "purple");
             return false;
-        }}
+        }
+        CPH.SetArgument("inputUser", user.UserName);
+        CPH.SetArgument("inputUserName", user.UserLogin);
+        return true;
+    }
+}"""
 
-        if (string.IsNullOrEmpty(accountAge) || accountAge.StartsWith("Error"))
-        {{
-            CPH.TwitchAnnounce($"@{{userName}} Could not get account age for {{resolvedUser}} WutFace", false, "purple");
-            return false;
-        }}
-
+def _make_accountage_csharp_announce(message_template):
+    """Step 2: read %inputUser% and %accountAge% (set by Fetch URL) and announce."""
+    cs_msg = (message_template
+              .replace("%inputUser%", "{inputUser}")
+              .replace("%accountAge%", "{accountAge}"))
+    return f"""\
+using System;
+public class CPHInline
+{{
+    public bool Execute()
+    {{
+        CPH.TryGetArg("inputUser", out string inputUser);
+        CPH.TryGetArg("accountAge", out string accountAge);
         CPH.TwitchAnnounce($"{cs_msg}", false, "purple");
         return true;
     }}
@@ -2023,32 +2008,63 @@ def build_setgame_action(name, group, queue_id, not_found_msg, not_found_game_ms
 def build_accountage_action(name, group, queue_id, not_available_msg, message=None):
     """
     !accountage — Twitch only.
-    C# fetches account age via decapi.me and sends the formatted message directly.
+    Structure: C# resolves user (→ userFound) → if True → Fetch URL (→ accountAge) → C# TwitchAnnounce.
     """
     if message is None:
-        message = "/me %inputUser% was born %accountAge% ago"
+        message = "/me @%inputUser% was born %accountAge% ago"
 
     action_id  = str(uuid.uuid4())
     command_id = str(uuid.uuid4())
     switch_id  = str(uuid.uuid4())
     twitch_id  = str(uuid.uuid4())
+    if_id      = str(uuid.uuid4())
+    then_id    = str(uuid.uuid4())
 
-    byte_code = base64.b64encode(_make_accountage_csharp(message).encode("utf-8")).decode("utf-8")
+    resolve_code  = base64.b64encode(ACCOUNTAGE_CSHARP_RESOLVE.encode("utf-8")).decode("utf-8")
+    announce_code = base64.b64encode(_make_accountage_csharp_announce(message).encode("utf-8")).decode("utf-8")
+
+    def _cs(name_, code, save_to, parent_id, index):
+        return {
+            "name": name_, "description": "",
+            "references": [
+                "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\mscorlib.dll",
+                "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.dll",
+            ],
+            "byteCode": code,
+            "precompile": False, "delayStart": False,
+            "saveResultToVariable": bool(save_to), "saveToVariable": save_to or "",
+            "id": str(uuid.uuid4()), "weight": 0.0, "type": 99999,
+            "parentId": parent_id, "enabled": True, "index": index,
+        }
+
+    def _fetch_url(parent_id, index):
+        return {
+            "url": "https://decapi.me/twitch/accountage/%inputUserName%?precision=4",
+            "variableName": "accountAge",
+            "headers": {}, "parseAsJson": False, "autoType": True,
+            "id": str(uuid.uuid4()), "weight": 0.0, "type": 1007,
+            "parentId": parent_id, "enabled": True, "index": index,
+        }
 
     twitch_case = {
         "caseSensitive": True, "values": ["twitch"], "random": False,
         "subActions": [
+            _cs("Check if user exists", resolve_code, "userFound", twitch_id, 0),
             {
-                "name": "", "description": "",
-                "references": [
-                    "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\mscorlib.dll",
-                    "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.dll",
+                "input": "%userFound%", "operation": 0, "value": "True", "autoType": True,
+                "subActions": [
+                    {
+                        "random": False,
+                        "subActions": [
+                            _fetch_url(then_id, 0),
+                            _cs("Send announcement", announce_code, None, then_id, 1),
+                        ],
+                        "id": then_id, "weight": 0.0, "type": 99901,
+                        "parentId": if_id, "enabled": True, "index": 0,
+                    },
                 ],
-                "byteCode": byte_code,
-                "precompile": False, "delayStart": False,
-                "saveResultToVariable": False, "saveToVariable": "",
-                "id": str(uuid.uuid4()), "weight": 0.0, "type": 99999,
-                "parentId": twitch_id, "enabled": True, "index": 0,
+                "id": if_id, "weight": 0.0, "type": 120,
+                "parentId": twitch_id, "enabled": True, "index": 1,
             },
         ],
         "id": twitch_id, "weight": 0.0, "type": 99903,
