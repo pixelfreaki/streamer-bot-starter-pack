@@ -150,7 +150,7 @@
       "notAvailable": "@%user% !setgame não está disponível nessa plataforma D:"
     },
     "accountage": {
-      "message": "/me @%inputUser% nasceu há %accountAge%",
+      "message": "@%inputUser% nasceu há %accountAge%",
       "notAvailable": "@%user% !accountage não está disponível nessa plataforma D:"
     },
     "time": {
