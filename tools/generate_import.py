@@ -1718,23 +1718,6 @@ public class CPHInline
     }
 }"""
 
-def _make_accountage_csharp_announce(message_template):
-    """Step 2: read %inputUser% and %accountAge% (set by Fetch URL) and announce."""
-    cs_msg = (message_template
-              .replace("%inputUser%", "{inputUser}")
-              .replace("%accountAge%", "{accountAge}"))
-    return f"""\
-using System;
-public class CPHInline
-{{
-    public bool Execute()
-    {{
-        CPH.TryGetArg("inputUser", out string inputUser);
-        CPH.TryGetArg("accountAge", out string accountAge);
-        CPH.TwitchAnnounce($"{cs_msg}", false, "purple");
-        return true;
-    }}
-}}"""
 
 # Followage uses a separate resolve step that also sets %inputUserName% for the type-51 sub-action.
 FOLLOWAGE_CSHARP_1 = """\
@@ -2053,7 +2036,6 @@ def build_accountage_action(name, group, queue_id, not_available_msg, message=No
     then_id    = str(uuid.uuid4())
 
     resolve_code  = base64.b64encode(ACCOUNTAGE_CSHARP_RESOLVE.encode("utf-8")).decode("utf-8")
-    announce_code = base64.b64encode(_make_accountage_csharp_announce(message).encode("utf-8")).decode("utf-8")
 
     def _cs(name_, code, save_to, parent_id, index):
         return {
@@ -2089,7 +2071,9 @@ def build_accountage_action(name, group, queue_id, not_available_msg, message=No
                         "random": False,
                         "subActions": [
                             _fetch_url(then_id, 0),
-                            _cs("Send announcement", announce_code, None, then_id, 1),
+                            {"text": message, "color": 4, "useBot": True, "fallback": True,
+                             "id": str(uuid.uuid4()), "weight": 0.0, "type": 23,
+                             "parentId": then_id, "enabled": True, "index": 1},
                         ],
                         "id": then_id, "weight": 0.0, "type": 99901,
                         "parentId": if_id, "enabled": True, "index": 0,
@@ -2889,7 +2873,7 @@ def main():
     code = build_joke_code(joke_fallbacks, language, empty_prompt, topic_prompt)
     action_id, command_id, action = make_action(
         cmd["trigger"], cmd["group"], code, queue_id,
-        chat_text="@%user% %jokeResult%", announce=True
+        chat_text="@%user% %jokeResult%"
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[joke] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
@@ -3152,7 +3136,7 @@ def main():
 
     action_id, command_id, action = build_time_action(
         cmd["trigger"], cmd["group"], queue_id,
-        twitch_msg=commands_fmt, kick_msg=commands_fmt, youtube_msg=commands_fmt, twitch_announce=True
+        twitch_msg=commands_fmt, kick_msg=commands_fmt, youtube_msg=commands_fmt
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[commands] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
