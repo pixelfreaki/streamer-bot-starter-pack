@@ -154,13 +154,47 @@ def make_csharp_subaction(code, parent_id=None, index=0):
     }
 
 
-def make_send_switch(text, parent_id=None, index=0):
-    """Platform switch that sends %randomResponse% to Twitch, Kick, and YouTube."""
+def _make_announce_cs(text, color="purple"):
+    """Build inline C# that reads %arg% variables from context and calls TwitchAnnounce."""
+    import re
+    varnames = list(dict.fromkeys(re.findall(r'%(\w+)%', text)))
+    decls = "\n".join(f'        CPH.TryGetArg("{v}", out string {v});' for v in varnames)
+    cs_text = re.sub(r'%(\w+)%', r'{\1}', text)
+    return f"""\
+using System;
+public class CPHInline
+{{
+    public bool Execute()
+    {{
+{decls}
+        CPH.TwitchAnnounce($"{cs_text}", false, "{color}");
+        return true;
+    }}
+}}"""
+
+
+def make_send_switch(text, parent_id=None, index=0, announce=False):
+    """Platform switch that sends text to Twitch (type 23 or TwitchAnnounce), Kick, and YouTube."""
     switch_id = str(uuid.uuid4())
     twitch_id = str(uuid.uuid4())
     kick_id = str(uuid.uuid4())
     youtube_id = str(uuid.uuid4())
     default_id = str(uuid.uuid4())
+
+    if announce:
+        announce_bc = base64.b64encode(_make_announce_cs(text).encode("utf-8")).decode("utf-8")
+        twitch_subactions = [{
+            "name": "", "description": "",
+            "references": ["C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\mscorlib.dll"],
+            "byteCode": announce_bc, "precompile": False, "delayStart": False,
+            "saveResultToVariable": False, "saveToVariable": "",
+            "id": str(uuid.uuid4()), "weight": 0.0, "type": 99999,
+            "parentId": twitch_id, "enabled": True, "index": 0,
+        }]
+    else:
+        twitch_subactions = [{"text": text, "color": 4, "useBot": True, "fallback": True,
+                              "id": str(uuid.uuid4()), "weight": 0.0, "type": 23,
+                              "parentId": twitch_id, "enabled": True, "index": 0}]
 
     return {
         "input": "%commandSource%",
@@ -170,9 +204,7 @@ def make_send_switch(text, parent_id=None, index=0):
                 "caseSensitive": True,
                 "values": ["twitch"],
                 "random": False,
-                "subActions": [{"text": text, "color": 4, "useBot": True, "fallback": True,
-                                "id": str(uuid.uuid4()), "weight": 0.0, "type": 23,
-                                "parentId": twitch_id, "enabled": True, "index": 0}],
+                "subActions": twitch_subactions,
                 "id": twitch_id, "weight": 0.0, "type": 99903,
                 "parentId": switch_id, "enabled": True, "index": 0,
             },
@@ -207,7 +239,7 @@ def make_send_switch(text, parent_id=None, index=0):
     }
 
 
-def make_action(name, group, code, queue_id, chat_text="@%user% %randomResponse%"):
+def make_action(name, group, code, queue_id, chat_text="@%user% %randomResponse%", announce=False):
     action_id = str(uuid.uuid4())
     command_id = str(uuid.uuid4())
 
@@ -235,7 +267,7 @@ def make_action(name, group, code, queue_id, chat_text="@%user% %randomResponse%
             {"value": "Code", "color": "", "id": str(uuid.uuid4()), "weight": 0.0,
              "type": 1009, "parentId": None, "enabled": True, "index": 0},
             make_csharp_subaction(code, parent_id=None, index=1),
-            make_send_switch(chat_text, parent_id=None, index=2),
+            make_send_switch(chat_text, parent_id=None, index=2, announce=announce),
         ],
         "collapsedGroups": [],
     }
@@ -2318,9 +2350,10 @@ def build_uptime_action(name, group, queue_id, not_available_msg):
     return action_id, command_id, action
 
 
-def build_time_action(name, group, queue_id, twitch_msg, kick_msg, youtube_msg):
+def build_time_action(name, group, queue_id, twitch_msg, kick_msg, youtube_msg, twitch_announce=False):
     """
     !time — pure native chat message, no C#. Platform switch sends platform-specific message.
+    Set twitch_announce=True to send the Twitch message as a purple announcement.
     """
     action_id  = str(uuid.uuid4())
     command_id = str(uuid.uuid4())
@@ -2331,13 +2364,24 @@ def build_time_action(name, group, queue_id, twitch_msg, kick_msg, youtube_msg):
     youtube_id = str(uuid.uuid4())
     default_id = str(uuid.uuid4())
 
+    if twitch_announce:
+        announce_bc = base64.b64encode(_make_announce_cs(twitch_msg).encode("utf-8")).decode("utf-8")
+        twitch_subactions = [{
+            "name": "", "description": "",
+            "references": ["C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\mscorlib.dll"],
+            "byteCode": announce_bc, "precompile": False, "delayStart": False,
+            "saveResultToVariable": False, "saveToVariable": "",
+            "id": str(uuid.uuid4()), "weight": 0.0, "type": 99999,
+            "parentId": twitch_id, "enabled": True, "index": 0,
+        }]
+    else:
+        twitch_subactions = [{"text": twitch_msg, "color": 4, "useBot": True, "fallback": True,
+                              "id": str(uuid.uuid4()), "weight": 0.0, "type": 23,
+                              "parentId": twitch_id, "enabled": True, "index": 0}]
+
     twitch_case = {
         "caseSensitive": True, "values": ["twitch"], "random": False,
-        "subActions": [
-            {"text": twitch_msg, "color": 4, "useBot": True, "fallback": True,
-             "id": str(uuid.uuid4()), "weight": 0.0, "type": 23,
-             "parentId": twitch_id, "enabled": True, "index": 0},
-        ],
+        "subActions": twitch_subactions,
         "id": twitch_id, "weight": 0.0, "type": 99903,
         "parentId": switch_id, "enabled": True, "index": 0,
     }
@@ -2845,7 +2889,7 @@ def main():
     code = build_joke_code(joke_fallbacks, language, empty_prompt, topic_prompt)
     action_id, command_id, action = make_action(
         cmd["trigger"], cmd["group"], code, queue_id,
-        chat_text="@%user% %jokeResult%"
+        chat_text="@%user% %jokeResult%", announce=True
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[joke] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
@@ -3108,7 +3152,7 @@ def main():
 
     action_id, command_id, action = build_time_action(
         cmd["trigger"], cmd["group"], queue_id,
-        twitch_msg=commands_fmt, kick_msg=commands_fmt, youtube_msg=commands_fmt
+        twitch_msg=commands_fmt, kick_msg=commands_fmt, youtube_msg=commands_fmt, twitch_announce=True
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[commands] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
