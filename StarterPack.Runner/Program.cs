@@ -5,6 +5,7 @@ using StarterPack.AI.OpenAI;
 using StarterPack.Commands;
 using StarterPack.Core.Interfaces;
 using StarterPack.Core.Models;
+using StarterPack.StreamElements;
 
 string baseDir = AppContext.BaseDirectory;
 
@@ -127,6 +128,18 @@ using AiLiciaProvider aiLicia =
 if (aiLicia.IsAvailable)
     Console.WriteLine("[AI_Licia] Connected — persona commands enabled");
 
+// Build StreamElements service (optional)
+string? seJwt     = config["StreamElements:JwtToken"];
+string? seChannel = config["StreamElements:Channel"];
+StreamElementsService? seService =
+    !string.IsNullOrWhiteSpace(seJwt)     && seJwt     != "your_jwt_token_here" &&
+    !string.IsNullOrWhiteSpace(seChannel) && seChannel != "your_channel_name_here"
+        ? new StreamElementsService(seJwt, seChannel)
+        : null;
+
+if (seService?.IsAvailable == true)
+    Console.WriteLine("[StreamElements] Connected — !points and !top enabled");
+
 // Load AI_Licia command locale strings
 var oracleElement   = commandsElement.GetProperty("oracle");
 string[] oracleStyles   = oracleElement.GetProperty("styles").EnumerateArray().Select(x => x.GetString()!).ToArray();
@@ -161,6 +174,18 @@ string[] hexStyles   = hexElement.GetProperty("styles").EnumerateArray().Select(
 string[] hexFallback = hexElement.GetProperty("fallback").EnumerateArray().Select(x => x.GetString()!).ToArray();
 string   hexNoInput  = hexElement.GetProperty("noInput").GetString()!;
 
+// points
+var pointsElement      = commandsElement.GetProperty("points");
+string pointsMessage      = pointsElement.GetProperty("message").GetString()!;
+string pointsNotAvailable = pointsElement.GetProperty("notAvailable").GetString()!;
+string pointsNotFound     = pointsElement.GetProperty("notFound").GetString()!;
+
+// top
+var topElement      = commandsElement.GetProperty("top");
+string topHeader      = topElement.GetProperty("header").GetString()!;
+string topEntry       = topElement.GetProperty("entry").GetString()!;
+string topNotAvailable = topElement.GetProperty("notAvailable").GetString()!;
+
 // Register commands
 var commands = new Dictionary<string, ICommand>(StringComparer.OrdinalIgnoreCase)
 {
@@ -192,6 +217,9 @@ var commands = new Dictionary<string, ICommand>(StringComparer.OrdinalIgnoreCase
     ["tarot"]          = new TarotCommand(tarotStyles, tarotFallback, aiLicia.IsAvailable ? aiLicia : null),
     ["judge"]          = new JudgeCommand(judgeStyles, judgeFallback, judgeNoInput, aiLicia.IsAvailable ? aiLicia : null),
     ["hex"]            = new HexCommand(hexStyles, hexFallback, hexNoInput, aiLicia.IsAvailable ? aiLicia : null),
+    ["points"]         = new PointsCommand(pointsMessage, pointsNotAvailable, pointsNotFound, seService),
+    ["top"]            = new TopCommand("top",   topHeader, topEntry, topNotAvailable, 5,  seService),
+    ["top10"]          = new TopCommand("top10", topHeader, topEntry, topNotAvailable, 10, seService),
 };
 
 string cmdList = string.Join(" ", commands.Keys.Order().Select(k => $"!{k}"));

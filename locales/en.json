@@ -544,6 +544,16 @@
         "Error 404: Common sense not found. Bug or feature? Data suggests: feature.",
         "I looked at the facts. Calculated the risks. Decided to ignore both. That's called determination. Or sleep deprivation."
       ]
+    },
+    "points": {
+      "message": "⭐ {target} has {points} points (rank #{rank})",
+      "notAvailable": "StreamElements is not configured",
+      "notFound": "Could not find points for {target}"
+    },
+    "top": {
+      "header": "🏆 Top points:",
+      "entry": "#{rank} {username} — {points} pts",
+      "notAvailable": "StreamElements is not configured"
     }
   }
 }

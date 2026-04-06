@@ -557,6 +557,16 @@
         "A maldição volta para quem lançou. Sem alvo, sem feitiço, {user}.",
         "O Oráculo da Ruína precisa de um nome. Tente: !hex @alguém"
       ]
+    },
+    "points": {
+      "message": "⭐ {target} tem {points} pontos (posição #{rank})",
+      "notAvailable": "StreamElements não está configurado",
+      "notFound": "Não foi possível encontrar os pontos de {target}"
+    },
+    "top": {
+      "header": "🏆 Top pontos:",
+      "entry": "#{rank} {username} — {points} pts",
+      "notAvailable": "StreamElements não está configurado"
     }
   }
 }
