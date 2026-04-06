@@ -2792,6 +2792,497 @@ def build_scene_action(name, group, queue_id):
     return action_id, command_id, action
 
 
+def build_points_code(message_tmpl, not_available_msg, not_found_msg):
+    """
+    Generates inline C# for !points.
+
+    - Reads se_jwt and se_channel from Streamer.bot persisted global variables.
+    - Gets target from rawInput or falls back to the calling user.
+    - Calls GET /points/{channel}/{target} on the StreamElements API.
+    - Sets %pointsResult% argument for the platform switch to send.
+    - Falls back to notFound message on 404/errors; notAvailable if SE not configured.
+    """
+    msg_lit    = csharp_literal(message_tmpl)
+    na_lit     = csharp_literal(not_available_msg)
+    nf_lit     = csharp_literal(not_found_msg)
+    ph_target  = csharp_literal("{target}")
+    ph_points  = csharp_literal("{points}")
+    ph_rank    = csharp_literal("{rank}")
+    pts_key    = csharp_literal('"points":')
+    rank_key   = csharp_literal('"rank":')
+
+    return f"""\
+using System;
+using System.Net;
+
+public class CPHInline
+{{
+    public bool Execute()
+    {{
+        string seJwt     = CPH.GetGlobalVar<string>("se_jwt", true);
+        string seChannel = CPH.GetGlobalVar<string>("se_channel", true);
+
+        string target = "";
+        if (args.ContainsKey("rawInput"))
+            target = args["rawInput"].ToString().Trim();
+        if (string.IsNullOrEmpty(target))
+            target = args.ContainsKey("user") ? args["user"].ToString() : "";
+
+        if (string.IsNullOrEmpty(seJwt) || string.IsNullOrEmpty(seChannel))
+        {{
+            CPH.SetArgument("pointsResult", {na_lit});
+            return true;
+        }}
+
+        try
+        {{
+            string url = "https://api.streamelements.com/kappa/v2/points/" + seChannel + "/" + target;
+            using (var client = new WebClient())
+            {{
+                client.Headers[HttpRequestHeader.Authorization] = "Bearer " + seJwt;
+                client.Headers[HttpRequestHeader.Accept] = "application/json";
+                string json = client.DownloadString(url);
+                long points = ExtractLong(json, {pts_key});
+                long rank   = ExtractLong(json, {rank_key});
+                string msg = {msg_lit}
+                    .Replace({ph_target}, target)
+                    .Replace({ph_points}, points.ToString())
+                    .Replace({ph_rank}, rank.ToString());
+                CPH.SetArgument("pointsResult", msg);
+            }}
+        }}
+        catch
+        {{
+            string notFound = {nf_lit}.Replace({ph_target}, target);
+            CPH.SetArgument("pointsResult", notFound);
+        }}
+        return true;
+    }}
+
+    private static long ExtractLong(string json, string keyWithColon)
+    {{
+        int idx = json.IndexOf(keyWithColon);
+        if (idx < 0) return 0;
+        int start = idx + keyWithColon.Length;
+        while (start < json.Length && (json[start] == ' ' || json[start] == '\\t')) start++;
+        int end = start;
+        while (end < json.Length && (char.IsDigit(json[end]) || json[end] == '-')) end++;
+        if (end == start) return 0;
+        long val;
+        return long.TryParse(json.Substring(start, end - start), out val) ? val : 0;
+    }}
+}}"""
+
+
+def build_points_action(name, group, queue_id, code, not_available_msg):
+    """
+    Builds the !points action.
+
+    Structure (Twitch branch): C# runs first → sends %pointsResult% via type-23 announce.
+    Kick / YouTube receive the not_available_msg directly.
+    """
+    action_id  = str(uuid.uuid4())
+    command_id = str(uuid.uuid4())
+    switch_id  = str(uuid.uuid4())
+    twitch_id  = str(uuid.uuid4())
+    kick_id    = str(uuid.uuid4())
+    youtube_id = str(uuid.uuid4())
+    default_id = str(uuid.uuid4())
+
+    code_bc = base64.b64encode(code.encode("utf-8")).decode("utf-8")
+
+    twitch_case = {
+        "caseSensitive": True, "values": ["twitch"], "random": False,
+        "subActions": [
+            {
+                "name": "", "description": "",
+                "references": [
+                    "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\mscorlib.dll",
+                    "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.dll",
+                ],
+                "byteCode": code_bc,
+                "precompile": False, "delayStart": False,
+                "saveResultToVariable": False, "saveToVariable": "",
+                "id": str(uuid.uuid4()), "weight": 0.0, "type": 99999,
+                "parentId": twitch_id, "enabled": True, "index": 0,
+            },
+            {"text": "%pointsResult%", "color": 4, "useBot": True, "fallback": True,
+             "id": str(uuid.uuid4()), "weight": 0.0, "type": 23,
+             "parentId": twitch_id, "enabled": True, "index": 1},
+        ],
+        "id": twitch_id, "weight": 0.0, "type": 99903,
+        "parentId": switch_id, "enabled": True, "index": 0,
+    }
+
+    kick_case = {
+        "caseSensitive": True, "values": ["kick"], "random": False,
+        "subActions": [
+            {"text": not_available_msg, "useBot": True, "fallback": True,
+             "id": str(uuid.uuid4()), "weight": 0.0, "type": 35001,
+             "parentId": kick_id, "enabled": True, "index": 0},
+        ],
+        "id": kick_id, "weight": 0.0, "type": 99903,
+        "parentId": switch_id, "enabled": True, "index": 1,
+    }
+
+    youtube_case = {
+        "caseSensitive": True, "values": ["youtube"], "random": False,
+        "subActions": [
+            {"text": not_available_msg, "useBot": True, "fallback": True, "broadcast": 0,
+             "id": str(uuid.uuid4()), "weight": 0.0, "type": 4001,
+             "parentId": youtube_id, "enabled": True, "index": 0},
+        ],
+        "id": youtube_id, "weight": 0.0, "type": 99903,
+        "parentId": switch_id, "enabled": True, "index": 2,
+    }
+
+    default_case = {
+        "random": False, "subActions": [],
+        "id": default_id, "weight": 0.0, "type": 99904,
+        "parentId": switch_id, "enabled": True, "index": 3,
+    }
+
+    platform_switch = {
+        "input": "%commandSource%", "autoType": False,
+        "subActions": [twitch_case, kick_case, youtube_case, default_case],
+        "id": switch_id, "weight": 0.0, "type": 127,
+        "parentId": None, "enabled": True, "index": 1,
+    }
+
+    action = {
+        "id": action_id, "queue": queue_id, "enabled": True,
+        "excludeFromHistory": False, "excludeFromPending": False,
+        "name": name, "group": group,
+        "alwaysRun": False, "randomAction": False, "concurrent": False,
+        "triggers": [
+            {"commandId": command_id, "id": str(uuid.uuid4()),
+             "type": 401, "enabled": True, "exclusions": []}
+        ],
+        "subActions": [
+            {"value": "Code", "color": "", "id": str(uuid.uuid4()),
+             "weight": 0.0, "type": 1009, "parentId": None, "enabled": True, "index": 0},
+            platform_switch,
+        ],
+        "collapsedGroups": [],
+    }
+
+    return action_id, command_id, action
+
+
+def build_top_code(limit, header_tmpl, entry_tmpl, not_available_msg):
+    """
+    Generates inline C# for !top / !top10.
+
+    - Reads se_jwt and se_channel from Streamer.bot persisted global variables.
+    - Calls GET /points/{channel}/top?limit={limit} on the StreamElements API.
+    - Formats entries as "{header} #1 user — pts | #2 user — pts | …".
+    - Sets %topResult% argument for the platform switch to send.
+    """
+    na_lit       = csharp_literal(not_available_msg)
+    header_lit   = csharp_literal(header_tmpl)
+    entry_lit    = csharp_literal(entry_tmpl)
+    ph_rank      = csharp_literal("{rank}")
+    ph_username  = csharp_literal("{username}")
+    ph_points    = csharp_literal("{points}")
+    uname_key    = csharp_literal('"username":')
+    pts_key      = csharp_literal('"points":')
+
+    return f"""\
+using System;
+using System.Net;
+using System.Collections.Generic;
+
+public class CPHInline
+{{
+    public bool Execute()
+    {{
+        string seJwt     = CPH.GetGlobalVar<string>("se_jwt", true);
+        string seChannel = CPH.GetGlobalVar<string>("se_channel", true);
+
+        if (string.IsNullOrEmpty(seJwt) || string.IsNullOrEmpty(seChannel))
+        {{
+            CPH.SetArgument("topResult", {na_lit});
+            return true;
+        }}
+
+        try
+        {{
+            string url = "https://api.streamelements.com/kappa/v2/points/" + seChannel + "/top?limit={limit}";
+            using (var client = new WebClient())
+            {{
+                client.Headers[HttpRequestHeader.Authorization] = "Bearer " + seJwt;
+                client.Headers[HttpRequestHeader.Accept] = "application/json";
+                string json = client.DownloadString(url);
+
+                var parts = new List<string>();
+                int pos = 0;
+                while (pos < json.Length)
+                {{
+                    int uIdx = json.IndexOf({uname_key}, pos);
+                    if (uIdx < 0) break;
+                    int q1 = json.IndexOf('"', uIdx + {len('"username":')} );
+                    if (q1 < 0) break;
+                    int q2 = json.IndexOf('"', q1 + 1);
+                    if (q2 < 0) break;
+                    string username = json.Substring(q1 + 1, q2 - q1 - 1);
+                    long pts = ExtractLong(json, {pts_key}, q2);
+                    long rank = parts.Count + 1;
+                    parts.Add({entry_lit}
+                        .Replace({ph_rank}, rank.ToString())
+                        .Replace({ph_username}, username)
+                        .Replace({ph_points}, pts.ToString()));
+                    pos = q2 + 1;
+                }}
+
+                string result = parts.Count > 0
+                    ? {header_lit} + " " + string.Join(" | ", parts)
+                    : {na_lit};
+                CPH.SetArgument("topResult", result);
+            }}
+        }}
+        catch
+        {{
+            CPH.SetArgument("topResult", {na_lit});
+        }}
+        return true;
+    }}
+
+    private static long ExtractLong(string json, string keyWithColon, int from)
+    {{
+        int idx = json.IndexOf(keyWithColon, from);
+        if (idx < 0) return 0;
+        int start = idx + keyWithColon.Length;
+        while (start < json.Length && (json[start] == ' ' || json[start] == '\\t')) start++;
+        int end = start;
+        while (end < json.Length && char.IsDigit(json[end])) end++;
+        if (end == start) return 0;
+        long val;
+        return long.TryParse(json.Substring(start, end - start), out val) ? val : 0;
+    }}
+}}"""
+
+
+def build_top_action(name, group, queue_id, code, not_available_msg):
+    """
+    Builds the !top / !top10 action.
+
+    Structure (Twitch): C# runs → sends %topResult% via type-23 announce.
+    Kick / YouTube receive not_available_msg directly.
+    """
+    action_id  = str(uuid.uuid4())
+    command_id = str(uuid.uuid4())
+    switch_id  = str(uuid.uuid4())
+    twitch_id  = str(uuid.uuid4())
+    kick_id    = str(uuid.uuid4())
+    youtube_id = str(uuid.uuid4())
+    default_id = str(uuid.uuid4())
+
+    code_bc = base64.b64encode(code.encode("utf-8")).decode("utf-8")
+
+    twitch_case = {
+        "caseSensitive": True, "values": ["twitch"], "random": False,
+        "subActions": [
+            {
+                "name": "", "description": "",
+                "references": [
+                    "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\mscorlib.dll",
+                    "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.dll",
+                ],
+                "byteCode": code_bc,
+                "precompile": False, "delayStart": False,
+                "saveResultToVariable": False, "saveToVariable": "",
+                "id": str(uuid.uuid4()), "weight": 0.0, "type": 99999,
+                "parentId": twitch_id, "enabled": True, "index": 0,
+            },
+            {"text": "%topResult%", "color": 4, "useBot": True, "fallback": True,
+             "id": str(uuid.uuid4()), "weight": 0.0, "type": 23,
+             "parentId": twitch_id, "enabled": True, "index": 1},
+        ],
+        "id": twitch_id, "weight": 0.0, "type": 99903,
+        "parentId": switch_id, "enabled": True, "index": 0,
+    }
+
+    kick_case = {
+        "caseSensitive": True, "values": ["kick"], "random": False,
+        "subActions": [
+            {"text": not_available_msg, "useBot": True, "fallback": True,
+             "id": str(uuid.uuid4()), "weight": 0.0, "type": 35001,
+             "parentId": kick_id, "enabled": True, "index": 0},
+        ],
+        "id": kick_id, "weight": 0.0, "type": 99903,
+        "parentId": switch_id, "enabled": True, "index": 1,
+    }
+
+    youtube_case = {
+        "caseSensitive": True, "values": ["youtube"], "random": False,
+        "subActions": [
+            {"text": not_available_msg, "useBot": True, "fallback": True, "broadcast": 0,
+             "id": str(uuid.uuid4()), "weight": 0.0, "type": 4001,
+             "parentId": youtube_id, "enabled": True, "index": 0},
+        ],
+        "id": youtube_id, "weight": 0.0, "type": 99903,
+        "parentId": switch_id, "enabled": True, "index": 2,
+    }
+
+    default_case = {
+        "random": False, "subActions": [],
+        "id": default_id, "weight": 0.0, "type": 99904,
+        "parentId": switch_id, "enabled": True, "index": 3,
+    }
+
+    platform_switch = {
+        "input": "%commandSource%", "autoType": False,
+        "subActions": [twitch_case, kick_case, youtube_case, default_case],
+        "id": switch_id, "weight": 0.0, "type": 127,
+        "parentId": None, "enabled": True, "index": 1,
+    }
+
+    action = {
+        "id": action_id, "queue": queue_id, "enabled": True,
+        "excludeFromHistory": False, "excludeFromPending": False,
+        "name": name, "group": group,
+        "alwaysRun": False, "randomAction": False, "concurrent": False,
+        "triggers": [
+            {"commandId": command_id, "id": str(uuid.uuid4()),
+             "type": 401, "enabled": True, "exclusions": []}
+        ],
+        "subActions": [
+            {"value": "Code", "color": "", "id": str(uuid.uuid4()),
+             "weight": 0.0, "type": 1009, "parentId": None, "enabled": True, "index": 0},
+            platform_switch,
+        ],
+        "collapsedGroups": [],
+    }
+
+    return action_id, command_id, action
+
+
+def build_chat_activity_points_code(points, min_length, bots, bttv_emotes):
+    """
+    Generates inline C# for the Chat Activity Points event action.
+
+    - Reads args["user"] and args["message"] from the Twitch Chat Message event.
+    - Filters: commands (!…), too-short, known bots, emote-only messages.
+    - If all filters pass, calls PUT /points/{channel}/{user}/{points} on the SE API.
+    - Reads se_jwt and se_channel from Streamer.bot persisted global variables.
+    - Silent action — no reply to chat.
+    """
+    bots_str  = "\n".join(f'        {csharp_literal(b)},' for b in sorted(bots))
+    bttv_str  = "\n".join(f'        {csharp_literal(e)},' for e in sorted(bttv_emotes))
+    points_url_suffix = str(points)
+
+    return f"""\
+using System;
+using System.Net;
+using System.Collections.Generic;
+
+public class CPHInline
+{{
+    private static readonly HashSet<string> Bots = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {{
+{bots_str}
+    }};
+
+    private static readonly HashSet<string> BttvEmotes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {{
+{bttv_str}
+    }};
+
+    public bool Execute()
+    {{
+        string user    = args.ContainsKey("user")    ? args["user"].ToString()    : "";
+        string message = args.ContainsKey("message") ? args["message"].ToString() : "";
+        int emoteCount = 0;
+        if (args.ContainsKey("emoteCount") && args["emoteCount"] != null)
+            int.TryParse(args["emoteCount"].ToString(), out emoteCount);
+
+        if (message.StartsWith("!"))                          return true;
+        if (message.Trim().Length < {min_length})             return true;
+        if (Bots.Contains(user))                              return true;
+        if (IsEmoteOnly(message, emoteCount))                 return true;
+
+        string seJwt     = CPH.GetGlobalVar<string>("se_jwt", true);
+        string seChannel = CPH.GetGlobalVar<string>("se_channel", true);
+        if (string.IsNullOrEmpty(seJwt) || string.IsNullOrEmpty(seChannel)) return true;
+
+        try
+        {{
+            string url = "https://api.streamelements.com/kappa/v2/points/"
+                + seChannel + "/" + user + "/{points_url_suffix}";
+            using (var client = new WebClient())
+            {{
+                client.Headers[HttpRequestHeader.Authorization] = "Bearer " + seJwt;
+                client.UploadData(url, "PUT", new byte[0]);
+            }}
+        }}
+        catch {{ }}
+        return true;
+    }}
+
+    private static bool IsEmoteOnly(string message, int emoteCount)
+    {{
+        string[] words = message.Split(new char[]{{ ' ' }}, StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length == 0) return false;
+
+        if (emoteCount > 0 && emoteCount >= words.Length) return true;
+
+        if (words.Length >= 2)
+        {{
+            bool allSame = true;
+            for (int i = 1; i < words.Length; i++)
+                if (!string.Equals(words[0], words[i], StringComparison.OrdinalIgnoreCase))
+                {{ allSame = false; break; }}
+            if (allSame) return true;
+        }}
+
+        foreach (string w in words)
+            if (!BttvEmotes.Contains(w)) return false;
+        return true;
+    }}
+}}"""
+
+
+def build_chat_activity_action(name, group, queue_id, code):
+    """
+    Builds the Chat Activity Points event action.
+
+    No command trigger — user must add the 'Twitch Chat Message' event trigger manually
+    in Streamer.bot and set User Cooldown = 30s on that trigger.
+    excludeFromHistory = True to avoid flooding the action history log.
+    concurrent = True to handle simultaneous chat messages correctly.
+    """
+    action_id = str(uuid.uuid4())
+
+    code_bc = base64.b64encode(code.encode("utf-8")).decode("utf-8")
+
+    action = {
+        "id": action_id, "queue": queue_id, "enabled": True,
+        "excludeFromHistory": True, "excludeFromPending": False,
+        "name": name, "group": group,
+        "alwaysRun": False, "randomAction": False, "concurrent": True,
+        "triggers": [],
+        "subActions": [
+            {"value": "Code", "color": "", "id": str(uuid.uuid4()),
+             "weight": 0.0, "type": 1009, "parentId": None, "enabled": True, "index": 0},
+            {
+                "name": "", "description": "",
+                "references": [
+                    "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\mscorlib.dll",
+                    "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.dll",
+                ],
+                "byteCode": code_bc,
+                "precompile": False, "delayStart": False,
+                "saveResultToVariable": False, "saveToVariable": "",
+                "id": str(uuid.uuid4()), "weight": 0.0, "type": 99999,
+                "parentId": None, "enabled": True, "index": 1,
+            },
+        ],
+        "collapsedGroups": [],
+    }
+
+    return action_id, action
+
+
 def main():
     settings = load_json(os.path.join(ROOT, "appsettings.json"))
     locale = settings.get("App", {}).get("DefaultLocale", "en")
@@ -3125,7 +3616,7 @@ def main():
     _write_export(out_dir, "russianroulette", queue_id, queue_def, action, command, commands_config)
 
     # ── commands ───────────────────────────────────────────────────────────────
-    all_triggers = " ".join(sorted(commands_config[k]["trigger"] for k in commands_config))
+    all_triggers = " ".join(sorted(commands_config[k]["trigger"] for k in commands_config if "trigger" in commands_config[k]))
     commands_fmt = locale_data["commands"]["commands"]["message"].replace("{commands}", all_triggers)
     cmd = commands_config["commands"]
     queue_key = cmd["queue"]
@@ -3307,12 +3798,100 @@ def main():
     print(f"[hex] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
     _write_export(out_dir, "hex", queue_id, queue_def, action, command, commands_config)
 
+    # ── points ─────────────────────────────────────────────────────────────────
+    pts_data = locale_data["commands"]["points"]
+    cmd = commands_config["points"]
+    queue_key = cmd["queue"]
+    if queue_key not in queues_config:
+        raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
+    queue_def = queues_config[queue_key]
+    queue_id = queue_def["id"]
+
+    code = build_points_code(pts_data["message"], pts_data["notAvailable"], pts_data["notFound"])
+    action_id, command_id, action = build_points_action(
+        cmd["trigger"], cmd["group"], queue_id, code, pts_data["notAvailable"]
+    )
+    command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
+    print(f"[points] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
+    _write_export(out_dir, "points", queue_id, queue_def, action, command, commands_config)
+
+    # ── top ────────────────────────────────────────────────────────────────────
+    top_data = locale_data["commands"]["top"]
+    cmd = commands_config["top"]
+    queue_key = cmd["queue"]
+    if queue_key not in queues_config:
+        raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
+    queue_def = queues_config[queue_key]
+    queue_id = queue_def["id"]
+
+    code = build_top_code(5, top_data["header"], top_data["entry"], top_data["notAvailable"])
+    action_id, command_id, action = build_top_action(
+        cmd["trigger"], cmd["group"], queue_id, code, top_data["notAvailable"]
+    )
+    command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
+    print(f"[top] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
+    _write_export(out_dir, "top", queue_id, queue_def, action, command, commands_config)
+
+    # ── top10 ──────────────────────────────────────────────────────────────────
+    cmd = commands_config["top10"]
+    queue_key = cmd["queue"]
+    if queue_key not in queues_config:
+        raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
+    queue_def = queues_config[queue_key]
+    queue_id = queue_def["id"]
+
+    code = build_top_code(10, top_data["header"], top_data["entry"], top_data["notAvailable"])
+    action_id, command_id, action = build_top_action(
+        cmd["trigger"], cmd["group"], queue_id, code, top_data["notAvailable"]
+    )
+    command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
+    print(f"[top10] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
+    _write_export(out_dir, "top10", queue_id, queue_def, action, command, commands_config)
+
+    # ── chatactivitypoints ─────────────────────────────────────────────────────
+    cmd = commands_config["chatactivitypoints"]
+    queue_key = cmd["queue"]
+    if queue_key not in queues_config:
+        raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
+    queue_def = queues_config[queue_key]
+    queue_id = queue_def["id"]
+
+    code = build_chat_activity_points_code(
+        points=2,
+        min_length=3,
+        bots=list(["nightbot", "streamelements", "streamlabs", "moobot",
+                   "fossabot", "wizebot", "botisimo", "commanderroot",
+                   "stay_hydrated_bot", "restreambot", "pokemoncommunitygame",
+                   "kofistreambot", "streamholics"]),
+        bttv_emotes=list(["OMEGALUL", "PogU", "PauseChamp", "monkaS", "monkaW",
+                           "LULW", "Clap", "GIGACHAD", "Pog", "FeelsBadMan",
+                           "FeelsGoodMan", "HYPERS", "widepeepoHappy", "PepeLaugh",
+                           "catJAM", "NODDERS", "COPIUM", "Sadge", "EZ", "PeepoClap",
+                           "peepoHappy", "NOTED", "Aware", "forsenCD", "TriHard",
+                           "WeirdChamp", "BASED", "OMEGADANCE", "peepoLeave", "peepoArrive"]),
+    )
+    action_id, action = build_chat_activity_action(
+        "chatactivitypoints", cmd["group"], queue_id, code
+    )
+    print(f"[chatactivitypoints] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
+    _write_export(out_dir, "chatactivitypoints", queue_id, queue_def, action, command=None, commands_config=commands_config)
+
     print()
     print("To import:")
     print("  1. Open Streamer.bot")
     print("  2. Actions tab -> Import button (top right)")
     print("  3. Paste the contents of a generated/streamerbot/*.import.txt file")
     print("  4. Click Import")
+    print()
+    print("StreamElements integration (optional, points / top / top10 / chatactivitypoints):")
+    print('  Settings -> Variables -> add "se_jwt" (persisted global variable)')
+    print('  Settings -> Variables -> add "se_channel" (persisted global variable)')
+    print("  se_jwt    = your StreamElements JWT token (from streamelements.com/dashboard/account/security)")
+    print("  se_channel = your StreamElements channel ObjectId (decode your JWT -- field 'channel')")
+    print()
+    print("  chatactivitypoints — after importing, add the trigger manually:")
+    print("  Open the 'chatactivitypoints' action -> Triggers -> Add -> Twitch Chat Message")
+    print("  Set User Cooldown = 30 seconds on that trigger to limit one reward per 30 s per viewer.")
     print()
     print("OpenAI enhancement (optional, 8ball only):")
     print('  Settings -> Variables -> add "openai_api_key" (persisted global variable)')
@@ -3325,16 +3904,20 @@ def main():
     print("  Falls back to local responses if the key is missing or on any error.")
 
 
-def _write_export(out_dir, name, queue_id, queue_def, action, command, commands_config=None):
+def _write_export(out_dir, name, queue_id, queue_def, action, command=None, commands_config=None):
     # Apply stable action/command IDs from config so re-imports don't create duplicates.
     if commands_config and name in commands_config:
         cmd_def = commands_config[name]
-        if "action_id" in cmd_def and "command_id" in cmd_def:
+        if "action_id" in cmd_def:
             old_aid = action["id"]
-            old_cid = command["id"]
-            aid, cid = cmd_def["action_id"], cmd_def["command_id"]
-            action  = json.loads(json.dumps(action) .replace(old_aid, aid).replace(old_cid, cid))
-            command = json.loads(json.dumps(command).replace(old_aid, aid).replace(old_cid, cid))
+            aid = cmd_def["action_id"]
+            if command is not None and "command_id" in cmd_def:
+                old_cid = command["id"]
+                cid = cmd_def["command_id"]
+                action  = json.loads(json.dumps(action) .replace(old_aid, aid).replace(old_cid, cid))
+                command = json.loads(json.dumps(command).replace(old_aid, aid).replace(old_cid, cid))
+            else:
+                action = json.loads(json.dumps(action).replace(old_aid, aid))
 
     export = {
         "meta": {
@@ -3354,7 +3937,7 @@ def _write_export(out_dir, name, queue_id, queue_def, action, command, commands_
                     "name": queue_def["name"],
                 }
             ],
-            "commands": [command],
+            "commands": [] if command is None else [command],
             "websocketServers": [],
             "websocketClients": [],
             "timers": [],

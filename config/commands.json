@@ -215,5 +215,10 @@
     "group": "StreamElements",
     "action_id": "b5c6d7e8-f9a0-1234-b5c6-d7e8f9a01234",
     "command_id": "c6d7e8f9-a0b1-2345-c6d7-e8f9a0b12345"
+  },
+  "chatactivitypoints": {
+    "queue": "info",
+    "group": "StreamElements",
+    "action_id": "d7e8f9a0-b1c2-3456-d7e8-f9a0b1c23456"
   }
 }
