@@ -128,6 +128,10 @@ using AiLiciaProvider aiLicia =
 if (aiLicia.IsAvailable)
     Console.WriteLine("[AI_Licia] Connected — persona commands enabled");
 
+// Build chat activity action
+var chatState  = new InMemoryChatActivityState(TimeSpan.FromSeconds(30));
+// seService wired below after it is created
+
 // Build StreamElements service (optional)
 string? seJwt     = config["StreamElements:JwtToken"];
 string? seChannel = config["StreamElements:Channel"];
@@ -139,6 +143,14 @@ StreamElementsService? seService =
 
 if (seService?.IsAvailable == true)
     Console.WriteLine("[StreamElements] Connected — !points and !top enabled");
+
+var chatAction = new ChatActivityPointsAction(
+    minLength:  3,
+    points:     2,
+    bots:       null,   // uses DefaultBots
+    bttvEmotes: null,   // uses DefaultBttvEmotes
+    state:      chatState,
+    se:         seService);
 
 // Load AI_Licia command locale strings
 var oracleElement   = commandsElement.GetProperty("oracle");
@@ -227,6 +239,7 @@ commands["commands"] = new InfoCommand("commands", commandsFormat.Replace("{comm
 
 Console.WriteLine($"Streamer.bot Runner [{locale}] — type !<command> [input] or 'exit' to quit");
 Console.WriteLine($"Available commands: {string.Join(", ", commands.Keys.Select(k => $"!{k}"))}");
+Console.WriteLine("Chat simulation: type  chat [username] message  to test activity points");
 Console.WriteLine();
 
 while (true)
@@ -237,9 +250,37 @@ while (true)
     if (line is null || line.Equals("exit", StringComparison.OrdinalIgnoreCase))
         break;
 
+    // ── Chat simulation: "chat [username] message" ─────────────────────
+    if (line.StartsWith("chat ", StringComparison.OrdinalIgnoreCase))
+    {
+        var chatParts = line[5..].Trim().Split(' ', 2);
+        string chatUser, chatText;
+
+        if (chatParts.Length == 2 && !chatParts[0].Contains(' '))
+        {
+            chatUser = chatParts[0];
+            chatText = chatParts[1];
+        }
+        else
+        {
+            chatUser = "local";
+            chatText = line[5..].Trim();
+        }
+
+        var chatMsg = new ChatMessage(chatUser, chatText);
+        var (success, reason) = await chatAction.ProcessAsync(chatMsg);
+
+        string status = success
+            ? $"✅ +2 pts"
+            : $"❌ {reason}";
+
+        Console.WriteLine($"[chat] {chatUser}: \"{chatText}\" → {status}");
+        continue;
+    }
+
     if (!line.StartsWith('!'))
     {
-        Console.WriteLine("Commands must start with !");
+        Console.WriteLine("Commands must start with !   |   Chat sim: chat [user] message");
         continue;
     }
 
