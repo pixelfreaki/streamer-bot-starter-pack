@@ -45,17 +45,10 @@ public class StreamElementsService : IStreamElementsService, IDisposable
 
         var url = $"{BaseUrl}/points/{_channel}/top?limit={limit}";
         var response = await _httpClient.GetAsync(url, cancellationToken);
-        var body = await response.Content.ReadAsStringAsync(cancellationToken);
 
-        if (!response.IsSuccessStatusCode)
-        {
-            Console.Error.WriteLine($"[SE] GET {url} → {(int)response.StatusCode} {body}");
-            return [];
-        }
+        if (!response.IsSuccessStatusCode) return [];
 
-        Console.Error.WriteLine($"[SE] GET {url} → {body}");
-
-        using var doc = JsonDocument.Parse(body);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
 
         if (!doc.RootElement.TryGetProperty("users", out var users))
             return [];
@@ -67,6 +60,15 @@ public class StreamElementsService : IStreamElementsService, IDisposable
             ))
             .Where(u => !string.IsNullOrEmpty(u.Username))
             .ToList();
+    }
+
+    public async Task<bool> AddPointsAsync(string username, int amount, CancellationToken cancellationToken = default)
+    {
+        if (!IsAvailable) return false;
+
+        var url = $"{BaseUrl}/points/{_channel}/{Uri.EscapeDataString(username)}/{amount}";
+        var response = await _httpClient.PutAsync(url, null, cancellationToken);
+        return response.IsSuccessStatusCode;
     }
 
     public void Dispose() => _httpClient.Dispose();
