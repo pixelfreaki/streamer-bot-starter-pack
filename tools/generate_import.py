@@ -3653,6 +3653,7 @@ def build_raffle_action(name, group, queue_id, code, result_var, not_available_m
             "references": [
                 "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\mscorlib.dll",
                 "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.dll",
+                "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.Core.dll",
             ],
             "byteCode": code_bc,
             "precompile": False, "delayStart": False,
