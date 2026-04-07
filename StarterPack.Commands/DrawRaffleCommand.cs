@@ -52,9 +52,6 @@ public class DrawRaffleCommand : ICommand
         var joined      = _state.JoinedUsers.ToList();
         _state.Close();
 
-        if (joined.Count == 0)
-            return CommandResult.Fail(_noJoined);
-
         IReadOnlyList<(string Username, long Points)> leaderboard =
             Array.Empty<(string, long)>();
 
@@ -68,6 +65,7 @@ public class DrawRaffleCommand : ICommand
         var joinedSet = new HashSet<string>(joined, StringComparer.OrdinalIgnoreCase);
 
         // ── Top 5 draw: random from positions 1–5 in leaderboard ──────────────
+        // Does not require !join — always runs when leaderboard is available.
         string? top5 = null;
         if (leaderboard.Count > 0)
         {
@@ -77,7 +75,7 @@ public class DrawRaffleCommand : ICommand
 
         // ── Ranked draw: walk leaderboard, collect up to 10 joined users ──────
         string? ranked = null;
-        if (leaderboard.Count > 0)
+        if (joined.Count > 0 && leaderboard.Count > 0)
         {
             var eligibleRanked = leaderboard
                 .Where(e => joinedSet.Contains(e.Username))
@@ -89,7 +87,7 @@ public class DrawRaffleCommand : ICommand
         }
 
         // ── Extra draw: random from all joined users ───────────────────────────
-        string extra = joined[rng.Next(joined.Count)];
+        string? extra = joined.Count > 0 ? joined[rng.Next(joined.Count)] : null;
 
         // ── Persist session to history ─────────────────────────────────────────
         _history.Save(new RaffleSession(
@@ -102,9 +100,16 @@ public class DrawRaffleCommand : ICommand
         ));
 
         var lines = new List<string> { _starting };
-        if (top5    is not null) lines.Add(_top5Winner  .Replace("{user}", top5));
-        if (ranked  is not null) lines.Add(_rankedWinner.Replace("{user}", ranked));
-        lines.Add(_extraWinner.Replace("{user}", extra));
+        if (top5   is not null) lines.Add(_top5Winner  .Replace("{user}", top5));
+        if (joined.Count == 0)
+        {
+            lines.Add(_noJoined);
+        }
+        else
+        {
+            if (ranked is not null) lines.Add(_rankedWinner.Replace("{user}", ranked));
+            lines.Add(_extraWinner.Replace("{user}", extra!));
+        }
 
         return CommandResult.Ok(string.Join("\n", lines));
     }

@@ -3330,11 +3330,6 @@ public class CPHInline
         CPH.SetGlobalVar("raffle_open", false, true);
 
         string[] joined = raw.Length > 0 ? raw.Split('|') : new string[0];
-        if (joined.Length == 0)
-        {{
-            CPH.TwitchAnnounce({no_joined_lit}, false, "purple");
-            return true;
-        }}
 
         CPH.TwitchAnnounce({starting_lit}, false, "purple");
         Thread.Sleep(10000);
@@ -3373,37 +3368,44 @@ public class CPHInline
         var rng = new Random();
         var joinedSet = new HashSet<string>(joined, StringComparer.OrdinalIgnoreCase);
 
-        // Top 5 draw
+        // Top 5 draw — does not require !join, always runs when leaderboard is available
         string top5Winner = null;
         if (leaderboard.Count > 0)
         {{
             int pool = Math.Min(5, leaderboard.Count);
             top5Winner = leaderboard[rng.Next(pool)];
         }}
-
-        // Ranked draw: walk leaderboard, collect up to 10 joined users, pick 1
-        string rankedWinner = null;
-        if (leaderboard.Count > 0)
-        {{
-            var eligible = new List<string>();
-            foreach (string u in leaderboard)
-            {{
-                if (joinedSet.Contains(u)) eligible.Add(u);
-                if (eligible.Count >= 10) break;
-            }}
-            if (eligible.Count > 0)
-                rankedWinner = eligible[rng.Next(eligible.Count)];
-        }}
-
-        // Extra draw: random from all joined
-        string extraWinner = joined[rng.Next(joined.Length)];
-
-        // Announce winners
         if (top5Winner != null)
             CPH.TwitchAnnounce({top5_lit}.Replace({ph_user}, top5Winner), false, "purple");
-        if (rankedWinner != null)
-            CPH.TwitchAnnounce({ranked_lit}.Replace({ph_user}, rankedWinner), false, "purple");
-        CPH.TwitchAnnounce({extra_lit}.Replace({ph_user}, extraWinner), false, "purple");
+
+        // Ranked and Extra draws require !join
+        string rankedWinner = null;
+        string extraWinner  = null;
+        if (joined.Length == 0)
+        {{
+            CPH.TwitchAnnounce({no_joined_lit}, false, "purple");
+        }}
+        else
+        {{
+            // Ranked draw: walk leaderboard, collect up to 10 joined users, pick 1
+            if (leaderboard.Count > 0)
+            {{
+                var eligible = new List<string>();
+                foreach (string u in leaderboard)
+                {{
+                    if (joinedSet.Contains(u)) eligible.Add(u);
+                    if (eligible.Count >= 10) break;
+                }}
+                if (eligible.Count > 0)
+                    rankedWinner = eligible[rng.Next(eligible.Count)];
+            }}
+            if (rankedWinner != null)
+                CPH.TwitchAnnounce({ranked_lit}.Replace({ph_user}, rankedWinner), false, "purple");
+
+            // Extra draw: random from all joined
+            extraWinner  = joined[rng.Next(joined.Length)];
+            CPH.TwitchAnnounce({extra_lit}.Replace({ph_user}, extraWinner), false, "purple");
+        }}
 
         // Save to history file
         try
@@ -3412,9 +3414,9 @@ public class CPHInline
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "Streamer.bot",
                 {history_lit});
-            string top5Json    = top5Winner    != null ? "\\"" + top5Winner    + "\\"" : "null";
-            string rankedJson  = rankedWinner  != null ? "\\"" + rankedWinner  + "\\"" : "null";
-            string extraJson   = "\\"" + extraWinner + "\\"";
+            string top5Json    = top5Winner   != null ? "\\"" + top5Winner   + "\\"" : "null";
+            string rankedJson  = rankedWinner != null ? "\\"" + rankedWinner + "\\"" : "null";
+            string extraJson   = extraWinner  != null ? "\\"" + extraWinner  + "\\"" : "null";
             string newEntry    = "  {{" +
                 "\\"title\\":\\"" + title.Replace("\\\\", "\\\\\\\\").Replace("\\"", "\\\\\\"") + "\\"," +
                 "\\"date\\":\\"" + openedAt + "\\"," +

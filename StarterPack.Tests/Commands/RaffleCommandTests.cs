@@ -167,13 +167,43 @@ public class RaffleCommandTests
     }
 
     [Fact]
-    public async Task DrawRaffle_NoJoined_ReturnsFail()
+    public async Task DrawRaffle_NoJoined_NoLeaderboard_ShowsNoJoinedMessage()
     {
         var state = State();
         state.Open("Test");
         var result = await Draw(state, History()).ExecuteAsync(Ctx("mod"));
-        Assert.False(result.Success);
+        Assert.True(result.Success);
+        Assert.False(state.IsOpen);
         Assert.Contains("No joined", result.Message);
+    }
+
+    [Fact]
+    public async Task DrawRaffle_NoJoined_StillDrawsTop5FromLeaderboard()
+    {
+        var seMock = new Mock<IStreamElementsService>();
+        seMock.Setup(s => s.IsAvailable).Returns(true);
+        seMock.Setup(s => s.GetTopAsync(50, default)).ReturnsAsync(
+            (IReadOnlyList<(string Username, long Points)>)new[]
+            {
+                ("ranked1", 1000L), ("ranked2", 900L), ("ranked3", 800L),
+            });
+
+        var state = State();
+        state.Open("Test");
+
+        var history = History();
+        var result = await Draw(state, history, seMock.Object).ExecuteAsync(Ctx("mod"));
+
+        Assert.True(result.Success);
+        var session = history.GetRecent(1)[0];
+        Assert.NotNull(session.Top5Winner);
+        Assert.Null(session.RankedWinner);
+        Assert.Null(session.ExtraWinner);
+        Assert.Contains("No joined", result.Message);
+        Assert.True(
+            result.Message.Contains("ranked1") ||
+            result.Message.Contains("ranked2") ||
+            result.Message.Contains("ranked3"));
     }
 
     [Fact]
