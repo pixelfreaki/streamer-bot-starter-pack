@@ -3220,7 +3220,8 @@ def build_open_raffle_code(opened_msg, no_title_msg, already_open_msg):
     already_open_lit = csharp_literal(already_open_msg)
     ph_title         = csharp_literal("{title}")
 
-    return f"""using System;
+    return f"""\
+using System;
 
 public class CPHInline
 {{{{
@@ -3230,14 +3231,14 @@ public class CPHInline
         if (isOpen)
         {{{{
             string currentTitle = CPH.GetGlobalVar<string>("raffle_title", true) ?? "";
-            CPH.SetArgument("openRaffleResult", {{already_open_lit}}.Replace({{ph_title}}, currentTitle));
+            CPH.SetArgument("openRaffleResult", {already_open_lit}.Replace({ph_title}, currentTitle));
             return true;
         }}}}
 
         string title = args.ContainsKey("rawInput") ? args["rawInput"].ToString().Trim() : "";
         if (title.Length == 0)
         {{{{
-            CPH.SetArgument("openRaffleResult", {{no_title_lit}});
+            CPH.SetArgument("openRaffleResult", {no_title_lit});
             return true;
         }}}}
 
@@ -3246,7 +3247,7 @@ public class CPHInline
         CPH.SetGlobalVar("raffle_opened_at", DateTime.UtcNow.ToString("o"), true);
         CPH.SetGlobalVar("raffle_joined",    "",    true);
 
-        CPH.SetArgument("openRaffleResult", {{opened_lit}}.Replace({{ph_title}}, title));
+        CPH.SetArgument("openRaffleResult", {opened_lit}.Replace({ph_title}, title));
         return true;
     }}}}
 }}}}"""
