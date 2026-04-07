@@ -82,7 +82,11 @@ public class DrawRaffleCommand : ICommand
             top5 = pool[rng.Next(pool.Count)];
         }
 
-        // ── Top 10 draw: walk leaderboard, collect up to 10 joined users ──────
+        // ── Top 10 draw ───────────────────────────────────────────────────────
+        // Walk the full leaderboard top-to-bottom, skipping anyone who didn't
+        // join. Collect up to 10 joined users (preserving rank order), then
+        // pick 1 at random. Non-joined positions are effectively replaced by
+        // the next ranked person who did join.
         string? top10 = null;
         int top10PoolSize = 0;
         if (joined.Count > 0 && leaderboard.Count > 0)

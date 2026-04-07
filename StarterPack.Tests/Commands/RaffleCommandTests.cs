@@ -326,6 +326,45 @@ public class RaffleCommandTests
     }
 
     [Fact]
+    public async Task DrawRaffle_Top10_SkipsNonJoinedLeaderboardEntries_PicksFromJoinedOnly()
+    {
+        // Leaderboard positions 1-15 don't join; only positions 16 and 17 join.
+        // The draw must skip positions 1-15 and pick from [viewer116, viewer117].
+        var leaderboard = new[]
+        {
+            ("viewer1",   200L), ("viewer12",  200L), ("viewer13",  190L),
+            ("viewer14",  180L), ("viewer15",  170L), ("viewer16",  160L),
+            ("viewer17",  150L), ("viewer18",  140L), ("viewer19",  130L),
+            ("viewer10",  120L), ("viewer111", 110L), ("viewer112", 100L),
+            ("viewer113",  90L), ("viewer114",  80L), ("viewer115",  70L),
+            ("viewer116",  60L), ("viewer117",  50L), ("viewer118",  40L),
+            ("viewer119",  30L),
+        };
+
+        var seMock = new Mock<IStreamElementsService>();
+        seMock.Setup(s => s.IsAvailable).Returns(true);
+        seMock.Setup(s => s.GetTopAsync(50, default))
+              .ReturnsAsync((IReadOnlyList<(string Username, long Points)>)leaderboard);
+
+        var state = State();
+        state.Open("Test");
+        state.AddUser("viewer116"); // position 16
+        state.AddUser("viewer117"); // position 17
+        state.AddUser("viewer417"); // not in leaderboard
+        state.AddUser("viewer318"); // not in leaderboard
+
+        var history = History();
+        await Draw(state, history, seMock.Object).ExecuteAsync(Ctx("mod"));
+
+        var session = history.GetRecent(1)[0];
+        // Top 10 winner must be viewer116 or viewer117 — positions 1-15 didn't join
+        Assert.NotNull(session.Top10Winner);
+        Assert.True(session.Top10Winner == "viewer116" || session.Top10Winner == "viewer117");
+        // Bonus can be any of the four joined users
+        Assert.NotNull(session.BonusWinner);
+    }
+
+    [Fact]
     public async Task DrawRaffle_NoLeaderboard_ShowsTop5NoLeaderboardMessage()
     {
         // SE not configured — top5 draw skipped, message shown instead
