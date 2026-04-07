@@ -554,6 +554,34 @@
       "header": "🏆 Top points:",
       "entry": "#{rank} {username} — {points} pts",
       "notAvailable": "StreamElements is not configured"
+    },
+    "raffle": {
+      "join": {
+        "joined": "@{user} joined the raffle! 🎉",
+        "alreadyJoined": "@{user}, you're already in the raffle!",
+        "notOpen": "There is no open raffle right now."
+      },
+      "openRaffle": {
+        "opened": "🎁 Raffle open: {title}! Type !join to enter.",
+        "noTitle": "Usage: !openRaffle <title>"
+      },
+      "closeRaffle": {
+        "closed": "✅ Raffle closed.",
+        "notOpen": "There is no open raffle to close."
+      },
+      "drawRaffle": {
+        "starting": "🎲 Raffle closed! Starting draws in 10 seconds...",
+        "top5Winner": "🏆 Top 5 winner: @{user}",
+        "rankedWinner": "🎮 Ranked draw winner: @{user}",
+        "extraWinner": "✨ Extra draw winner: @{user}",
+        "noJoined": "No one joined the raffle.",
+        "notOpen": "There is no open raffle to draw.",
+        "leaderboardError": "Could not fetch leaderboard — draws may be incomplete."
+      },
+      "showPreviousRaffle": {
+        "template": "📜 Last raffle: {title} | {date} | Top5: {top5} | Ranked: {ranked} | Extra: {extra}",
+        "noHistory": "No previous raffle found."
+      }
     }
   }
 }

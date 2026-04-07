@@ -273,7 +273,8 @@ def make_action(name, group, code, queue_id, chat_text="@%user% %randomResponse%
     }
 
 
-def make_command(name, trigger, group, command_id, action_id):
+def make_command(name, trigger, group, command_id, action_id, mod_only=False):
+    # grantType: 0=Everyone, 3=Moderator (includes broadcaster in Streamer.bot)
     return {
         "permittedUsers": [],
         "permittedGroups": [],
@@ -294,7 +295,7 @@ def make_command(name, trigger, group, command_id, action_id):
         "globalCooldown": 0,
         "userCooldown": 0,
         "group": group,
-        "grantType": 0,
+        "grantType": 3 if mod_only else 0,
     }
 
 
@@ -3157,6 +3158,376 @@ def build_top_action(name, group, queue_id, code, not_available_msg):
     return action_id, command_id, action
 
 
+def build_join_code(joined_msg, already_joined_msg, not_open_msg):
+    """
+    Generates inline C# for !join.
+
+    - Reads raffle_open global var.
+    - Reads user from args.
+    - Reads raffle_joined (pipe-separated) global var.
+    - Adds user if not already present, updates global var.
+    - Sets %joinResult% for the platform switch to send.
+    """
+    joined_lit       = csharp_literal(joined_msg)
+    already_lit      = csharp_literal(already_joined_msg)
+    not_open_lit     = csharp_literal(not_open_msg)
+    ph_user          = csharp_literal("{user}")
+
+    return f"""\
+using System;
+
+public class CPHInline
+{{
+    public bool Execute()
+    {{
+        bool isOpen = CPH.GetGlobalVar<bool>("raffle_open", true);
+        if (!isOpen)
+        {{
+            CPH.SetArgument("joinResult", {not_open_lit});
+            return true;
+        }}
+
+        string user = args.ContainsKey("user") ? args["user"].ToString() : "";
+        string raw  = CPH.GetGlobalVar<string>("raffle_joined", true) ?? "";
+        string[] parts = raw.Length > 0 ? raw.Split('|') : new string[0];
+
+        foreach (string p in parts)
+            if (string.Equals(p, user, StringComparison.OrdinalIgnoreCase))
+            {{
+                CPH.SetArgument("joinResult", {already_lit}.Replace({ph_user}, user));
+                return true;
+            }}
+
+        string updated = raw.Length > 0 ? raw + "|" + user : user;
+        CPH.SetGlobalVar("raffle_joined", updated, true);
+        CPH.SetArgument("joinResult", {joined_lit}.Replace({ph_user}, user));
+        return true;
+    }}
+}}"""
+
+
+def build_open_raffle_code(opened_msg, no_title_msg):
+    """
+    Generates inline C# for !openRaffle.
+
+    - Reads rawInput for the raffle title.
+    - Sets raffle_open=true, raffle_title, raffle_opened_at, clears raffle_joined.
+    - Sets %openRaffleResult% for the platform switch to send.
+    """
+    opened_lit   = csharp_literal(opened_msg)
+    no_title_lit = csharp_literal(no_title_msg)
+    ph_title     = csharp_literal("{title}")
+
+    return f"""\
+using System;
+
+public class CPHInline
+{{
+    public bool Execute()
+    {{
+        string title = args.ContainsKey("rawInput") ? args["rawInput"].ToString().Trim() : "";
+        if (title.Length == 0)
+        {{
+            CPH.SetArgument("openRaffleResult", {no_title_lit});
+            return true;
+        }}
+
+        CPH.SetGlobalVar("raffle_open",      true,  true);
+        CPH.SetGlobalVar("raffle_title",     title, true);
+        CPH.SetGlobalVar("raffle_opened_at", DateTime.UtcNow.ToString("o"), true);
+        CPH.SetGlobalVar("raffle_joined",    "",    true);
+
+        CPH.SetArgument("openRaffleResult", {opened_lit}.Replace({ph_title}, title));
+        return true;
+    }}
+}}"""
+
+
+def build_close_raffle_code(closed_msg, not_open_msg):
+    """
+    Generates inline C# for !closeRaffle.
+
+    - Checks raffle_open global var.
+    - Sets raffle_open=false.
+    - Sets %closeRaffleResult% for the platform switch to send.
+    """
+    closed_lit   = csharp_literal(closed_msg)
+    not_open_lit = csharp_literal(not_open_msg)
+
+    return f"""\
+using System;
+
+public class CPHInline
+{{
+    public bool Execute()
+    {{
+        bool isOpen = CPH.GetGlobalVar<bool>("raffle_open", true);
+        if (!isOpen)
+        {{
+            CPH.SetArgument("closeRaffleResult", {not_open_lit});
+            return true;
+        }}
+
+        CPH.SetGlobalVar("raffle_open", false, true);
+        CPH.SetArgument("closeRaffleResult", {closed_lit});
+        return true;
+    }}
+}}"""
+
+
+def build_draw_raffle_code(
+    starting_msg,
+    top5_msg, ranked_msg, extra_msg,
+    no_joined_msg, not_open_msg,
+    history_file_path="raffle_history.json",
+):
+    """
+    Generates inline C# for !drawRaffle.
+
+    - Checks raffle_open.
+    - Closes raffle (sets raffle_open=false).
+    - Announces starting draws.
+    - Sleeps 10 seconds.
+    - Reads raffle_joined list.
+    - Reads se_jwt / se_channel and fetches top 50 leaderboard.
+    - Draws: Top5 (random from positions 1-5), Ranked (up to 10 joined from leaderboard, pick 1), Extra (random from all joined).
+    - Announces each winner individually via TwitchAnnounce.
+    - Saves session to raffle_history.json (in Streamer.bot data directory).
+    - Returns true; all chat sends are inline (no platform switch output needed).
+    """
+    starting_lit  = csharp_literal(starting_msg)
+    top5_lit      = csharp_literal(top5_msg)
+    ranked_lit    = csharp_literal(ranked_msg)
+    extra_lit     = csharp_literal(extra_msg)
+    no_joined_lit = csharp_literal(no_joined_msg)
+    not_open_lit  = csharp_literal(not_open_msg)
+    history_lit   = csharp_literal(history_file_path)
+    ph_user       = csharp_literal("{user}")
+    pts_key       = csharp_literal('"points":')
+    uname_key     = csharp_literal('"username":')
+
+    return f"""\
+using System;
+using System.Net;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+
+public class CPHInline
+{{
+    public bool Execute()
+    {{
+        bool isOpen = CPH.GetGlobalVar<bool>("raffle_open", true);
+        if (!isOpen)
+        {{
+            CPH.TwitchAnnounce({not_open_lit}, false, "purple");
+            return true;
+        }}
+
+        string title    = CPH.GetGlobalVar<string>("raffle_title",     true) ?? "";
+        string openedAt = CPH.GetGlobalVar<string>("raffle_opened_at", true) ?? DateTime.UtcNow.ToString("o");
+        string raw      = CPH.GetGlobalVar<string>("raffle_joined",    true) ?? "";
+        CPH.SetGlobalVar("raffle_open", false, true);
+
+        string[] joined = raw.Length > 0 ? raw.Split('|') : new string[0];
+        if (joined.Length == 0)
+        {{
+            CPH.TwitchAnnounce({no_joined_lit}, false, "purple");
+            return true;
+        }}
+
+        CPH.TwitchAnnounce({starting_lit}, false, "purple");
+        Thread.Sleep(10000);
+
+        // Fetch leaderboard
+        var leaderboard = new List<string>();  // ordered usernames
+        try
+        {{
+            string seJwt     = CPH.GetGlobalVar<string>("se_jwt",     true) ?? "";
+            string seChannel = CPH.GetGlobalVar<string>("se_channel", true) ?? "";
+            if (seJwt.Length > 0 && seChannel.Length > 0)
+            {{
+                string url = "https://api.streamelements.com/kappa/v2/points/" + seChannel + "/top?limit=50";
+                using (var client = new WebClient())
+                {{
+                    client.Headers[HttpRequestHeader.Authorization] = "Bearer " + seJwt;
+                    client.Headers[HttpRequestHeader.Accept] = "application/json";
+                    string json = client.DownloadString(url);
+                    int pos = 0;
+                    while (pos < json.Length)
+                    {{
+                        int uIdx = json.IndexOf({uname_key}, pos);
+                        if (uIdx < 0) break;
+                        int q1 = json.IndexOf('"', uIdx + {len('"username":')} );
+                        if (q1 < 0) break;
+                        int q2 = json.IndexOf('"', q1 + 1);
+                        if (q2 < 0) break;
+                        leaderboard.Add(json.Substring(q1 + 1, q2 - q1 - 1));
+                        pos = q2 + 1;
+                    }}
+                }}
+            }}
+        }}
+        catch {{ }}
+
+        var rng = new Random();
+        var joinedSet = new HashSet<string>(joined, StringComparer.OrdinalIgnoreCase);
+
+        // Top 5 draw
+        string top5Winner = null;
+        if (leaderboard.Count > 0)
+        {{
+            int pool = Math.Min(5, leaderboard.Count);
+            top5Winner = leaderboard[rng.Next(pool)];
+        }}
+
+        // Ranked draw: walk leaderboard, collect up to 10 joined users, pick 1
+        string rankedWinner = null;
+        if (leaderboard.Count > 0)
+        {{
+            var eligible = new List<string>();
+            foreach (string u in leaderboard)
+            {{
+                if (joinedSet.Contains(u)) eligible.Add(u);
+                if (eligible.Count >= 10) break;
+            }}
+            if (eligible.Count > 0)
+                rankedWinner = eligible[rng.Next(eligible.Count)];
+        }}
+
+        // Extra draw: random from all joined
+        string extraWinner = joined[rng.Next(joined.Length)];
+
+        // Announce winners
+        if (top5Winner != null)
+            CPH.TwitchAnnounce({top5_lit}.Replace({ph_user}, top5Winner), false, "purple");
+        if (rankedWinner != null)
+            CPH.TwitchAnnounce({ranked_lit}.Replace({ph_user}, rankedWinner), false, "purple");
+        CPH.TwitchAnnounce({extra_lit}.Replace({ph_user}, extraWinner), false, "purple");
+
+        // Save to history file
+        try
+        {{
+            string historyPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "Streamer.bot",
+                {history_lit});
+            string top5Json    = top5Winner    != null ? "\\"" + top5Winner    + "\\"" : "null";
+            string rankedJson  = rankedWinner  != null ? "\\"" + rankedWinner  + "\\"" : "null";
+            string extraJson   = "\\"" + extraWinner + "\\"";
+            string newEntry    = "  {{" +
+                "\\"title\\":\\"" + title.Replace("\\\\", "\\\\\\\\").Replace("\\"", "\\\\\\"") + "\\"," +
+                "\\"date\\":\\"" + openedAt + "\\"," +
+                "\\"joinedCount\\":" + joined.Length + "," +
+                "\\"top5Winner\\":" + top5Json + "," +
+                "\\"rankedWinner\\":" + rankedJson + "," +
+                "\\"extraWinner\\":" + extraJson +
+                "}}";
+            string existing = File.Exists(historyPath) ? File.ReadAllText(historyPath).Trim() : "[]";
+            string updated;
+            if (existing == "[]")
+                updated = "[\\n" + newEntry + "\\n]";
+            else
+                updated = existing.Substring(0, existing.Length - 1) + ",\\n" + newEntry + "\\n]";
+            File.WriteAllText(historyPath, updated);
+        }}
+        catch {{ }}
+
+        return true;
+    }}
+}}"""
+
+
+def build_show_previous_raffle_code(template_msg, no_history_msg, history_file_path="raffle_history.json"):
+    """
+    Generates inline C# for !showPreviousRaffle.
+
+    - Reads raffle_history.json from Streamer.bot data directory.
+    - Parses the last entry and announces it.
+    - Sets %showPreviousRaffleResult% for the platform switch.
+    """
+    template_lit   = csharp_literal(template_msg)
+    no_history_lit = csharp_literal(no_history_msg)
+    history_lit    = csharp_literal(history_file_path)
+    ph_title       = csharp_literal("{title}")
+    ph_date        = csharp_literal("{date}")
+    ph_top5        = csharp_literal("{top5}")
+    ph_ranked      = csharp_literal("{ranked}")
+    ph_extra       = csharp_literal("{extra}")
+
+    return f"""\
+using System;
+using System.IO;
+
+public class CPHInline
+{{
+    public bool Execute()
+    {{
+        string historyPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "Streamer.bot",
+            {history_lit});
+
+        if (!File.Exists(historyPath))
+        {{
+            CPH.SetArgument("showPreviousRaffleResult", {no_history_lit});
+            return true;
+        }}
+
+        string json = File.ReadAllText(historyPath).Trim();
+        // Find the last {{ ... }} object in the array
+        int last = json.LastIndexOf("{{");
+        if (last < 0)
+        {{
+            CPH.SetArgument("showPreviousRaffleResult", {no_history_lit});
+            return true;
+        }}
+
+        string entry = json.Substring(last);
+        int end = entry.IndexOf("}}");
+        if (end >= 0) entry = entry.Substring(0, end + 1);
+
+        string title  = ExtractString(entry, "title");
+        string date   = ExtractString(entry, "date");
+        string top5   = ExtractString(entry, "top5Winner");
+        string ranked = ExtractString(entry, "rankedWinner");
+        string extra  = ExtractString(entry, "extraWinner");
+
+        // Trim date to yyyy-MM-dd
+        if (date.Length >= 10) date = date.Substring(0, 10);
+        if (top5   == null) top5   = "-";
+        if (ranked == null) ranked = "-";
+        if (extra  == null) extra  = "-";
+
+        string msg = {template_lit}
+            .Replace({ph_title},  title  ?? "?")
+            .Replace({ph_date},   date)
+            .Replace({ph_top5},   top5)
+            .Replace({ph_ranked}, ranked)
+            .Replace({ph_extra},  extra);
+
+        CPH.SetArgument("showPreviousRaffleResult", msg);
+        return true;
+    }}
+
+    private static string ExtractString(string json, string key)
+    {{
+        string k = "\\"" + key + "\\":\\"";
+        int idx = json.IndexOf(k);
+        if (idx < 0)
+        {{
+            // try null value
+            string kn = "\\"" + key + "\\":null";
+            return json.IndexOf(kn) >= 0 ? null : null;
+        }}
+        int start = idx + k.Length;
+        int end   = json.IndexOf('"', start);
+        if (end < 0) return null;
+        return json.Substring(start, end - start);
+    }}
+}}"""
+
+
 def build_chat_activity_points_code(points, min_length, bots, bttv_emotes):
     """
     Generates inline C# for the Chat Activity Points event action.
@@ -3240,6 +3611,111 @@ public class CPHInline
         return true;
     }}
 }}"""
+
+
+def build_raffle_action(name, group, queue_id, code, result_var, not_available_msg=None):
+    """
+    Builds a raffle command action.
+
+    Structure:
+      - Label 'Code'
+      - C# subaction (sets %{result_var}% in args)
+      - Platform switch: Twitch type-23 announce, Kick/YouTube show not_available or skip
+
+    For drawRaffle the C# sends directly to chat via TwitchAnnounce, so result_var
+    is unused — pass result_var=None to skip the platform switch.
+    """
+    action_id  = str(uuid.uuid4())
+    command_id = str(uuid.uuid4())
+
+    code_bc = base64.b64encode(code.encode("utf-8")).decode("utf-8")
+
+    sub_actions = [
+        {"value": "Code", "color": "", "id": str(uuid.uuid4()),
+         "weight": 0.0, "type": 1009, "parentId": None, "enabled": True, "index": 0},
+        {
+            "name": "", "description": "",
+            "references": [
+                "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\mscorlib.dll",
+                "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.dll",
+            ],
+            "byteCode": code_bc,
+            "precompile": False, "delayStart": False,
+            "saveResultToVariable": False, "saveToVariable": "",
+            "id": str(uuid.uuid4()), "weight": 0.0, "type": 99999,
+            "parentId": None, "enabled": True, "index": 1,
+        },
+    ]
+
+    if result_var is not None:
+        # Platform switch: Twitch sends %result_var%, Kick/YouTube omit or show not_available
+        switch_id  = str(uuid.uuid4())
+        twitch_id  = str(uuid.uuid4())
+        kick_id    = str(uuid.uuid4())
+        youtube_id = str(uuid.uuid4())
+        default_id = str(uuid.uuid4())
+        na_text    = not_available_msg or ""
+
+        twitch_case = {
+            "caseSensitive": True, "values": ["twitch"], "random": False,
+            "subActions": [
+                {"text": f"%{result_var}%", "color": 4, "useBot": True, "fallback": True,
+                 "id": str(uuid.uuid4()), "weight": 0.0, "type": 23,
+                 "parentId": twitch_id, "enabled": True, "index": 0},
+            ],
+            "id": twitch_id, "weight": 0.0, "type": 99903,
+            "parentId": switch_id, "enabled": True, "index": 0,
+        }
+        kick_subactions = (
+            [{"text": na_text, "useBot": True, "fallback": True,
+              "id": str(uuid.uuid4()), "weight": 0.0, "type": 35001,
+              "parentId": kick_id, "enabled": True, "index": 0}]
+            if na_text else []
+        )
+        kick_case = {
+            "caseSensitive": True, "values": ["kick"], "random": False,
+            "subActions": kick_subactions,
+            "id": kick_id, "weight": 0.0, "type": 99903,
+            "parentId": switch_id, "enabled": True, "index": 1,
+        }
+        youtube_subactions = (
+            [{"text": na_text, "useBot": True, "fallback": True, "broadcast": 0,
+              "id": str(uuid.uuid4()), "weight": 0.0, "type": 4001,
+              "parentId": youtube_id, "enabled": True, "index": 0}]
+            if na_text else []
+        )
+        youtube_case = {
+            "caseSensitive": True, "values": ["youtube"], "random": False,
+            "subActions": youtube_subactions,
+            "id": youtube_id, "weight": 0.0, "type": 99903,
+            "parentId": switch_id, "enabled": True, "index": 2,
+        }
+        default_case = {
+            "random": False, "subActions": [],
+            "id": default_id, "weight": 0.0, "type": 99904,
+            "parentId": switch_id, "enabled": True, "index": 3,
+        }
+        sub_actions.append({
+            "input": "%commandSource%", "autoType": False,
+            "subActions": [twitch_case, kick_case, youtube_case, default_case],
+            "id": switch_id, "weight": 0.0, "type": 127,
+            "parentId": None, "enabled": True, "index": 2,
+        })
+
+    action = {
+        "id": action_id, "queue": queue_id, "enabled": True,
+        "excludeFromHistory": False, "excludeFromPending": False,
+        "name": name, "group": group,
+        "alwaysRun": False, "randomAction": False, "concurrent": False,
+        "triggers": [
+            {"commandId": command_id, "id": str(uuid.uuid4()),
+             "type": 401, "enabled": True, "exclusions": []}
+        ],
+        "subActions": sub_actions,
+        "collapsedGroups": [],
+    }
+
+    return action_id, command_id, action
 
 
 def build_chat_activity_action(name, group, queue_id, code):
@@ -3876,6 +4352,105 @@ def main():
     print(f"[chatactivitypoints] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
     _write_export(out_dir, "chatactivitypoints", queue_id, queue_def, action, command=None, commands_config=commands_config)
 
+    # ── raffle: join ───────────────────────────────────────────────────────────
+    raffle_data = locale_data["commands"]["raffle"]
+    join_data   = raffle_data["join"]
+    cmd = commands_config["join"]
+    queue_key = cmd["queue"]
+    if queue_key not in queues_config:
+        raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
+    queue_def = queues_config[queue_key]
+    queue_id  = queue_def["id"]
+
+    code = build_join_code(join_data["joined"], join_data["alreadyJoined"], join_data["notOpen"])
+    action_id, command_id, action = build_raffle_action(
+        cmd["trigger"], cmd["group"], queue_id, code, result_var="joinResult"
+    )
+    command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id,
+                           mod_only=cmd.get("mod_only", False))
+    print(f"[join] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
+    _write_export(out_dir, "join", queue_id, queue_def, action, command, commands_config)
+
+    # ── raffle: openRaffle ─────────────────────────────────────────────────────
+    open_data = raffle_data["openRaffle"]
+    cmd = commands_config["openRaffle"]
+    queue_key = cmd["queue"]
+    if queue_key not in queues_config:
+        raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
+    queue_def = queues_config[queue_key]
+    queue_id  = queue_def["id"]
+
+    code = build_open_raffle_code(open_data["opened"], open_data["noTitle"])
+    action_id, command_id, action = build_raffle_action(
+        cmd["trigger"], cmd["group"], queue_id, code, result_var="openRaffleResult"
+    )
+    command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id,
+                           mod_only=cmd.get("mod_only", False))
+    print(f"[openRaffle] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
+    _write_export(out_dir, "openRaffle", queue_id, queue_def, action, command, commands_config)
+
+    # ── raffle: closeRaffle ────────────────────────────────────────────────────
+    close_data = raffle_data["closeRaffle"]
+    cmd = commands_config["closeRaffle"]
+    queue_key = cmd["queue"]
+    if queue_key not in queues_config:
+        raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
+    queue_def = queues_config[queue_key]
+    queue_id  = queue_def["id"]
+
+    code = build_close_raffle_code(close_data["closed"], close_data["notOpen"])
+    action_id, command_id, action = build_raffle_action(
+        cmd["trigger"], cmd["group"], queue_id, code, result_var="closeRaffleResult"
+    )
+    command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id,
+                           mod_only=cmd.get("mod_only", False))
+    print(f"[closeRaffle] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
+    _write_export(out_dir, "closeRaffle", queue_id, queue_def, action, command, commands_config)
+
+    # ── raffle: drawRaffle ─────────────────────────────────────────────────────
+    draw_data = raffle_data["drawRaffle"]
+    cmd = commands_config["drawRaffle"]
+    queue_key = cmd["queue"]
+    if queue_key not in queues_config:
+        raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
+    queue_def = queues_config[queue_key]
+    queue_id  = queue_def["id"]
+
+    # drawRaffle sends directly via TwitchAnnounce — no platform switch result_var
+    code = build_draw_raffle_code(
+        draw_data["starting"],
+        draw_data["top5Winner"],
+        draw_data["rankedWinner"],
+        draw_data["extraWinner"],
+        draw_data["noJoined"],
+        draw_data["notOpen"],
+    )
+    action_id, command_id, action = build_raffle_action(
+        cmd["trigger"], cmd["group"], queue_id, code, result_var=None
+    )
+    command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id,
+                           mod_only=cmd.get("mod_only", False))
+    print(f"[drawRaffle] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
+    _write_export(out_dir, "drawRaffle", queue_id, queue_def, action, command, commands_config)
+
+    # ── raffle: showPreviousRaffle ─────────────────────────────────────────────
+    show_data = raffle_data["showPreviousRaffle"]
+    cmd = commands_config["showPreviousRaffle"]
+    queue_key = cmd["queue"]
+    if queue_key not in queues_config:
+        raise ValueError(f"Queue '{queue_key}' not defined in config/queues.json")
+    queue_def = queues_config[queue_key]
+    queue_id  = queue_def["id"]
+
+    code = build_show_previous_raffle_code(show_data["template"], show_data["noHistory"])
+    action_id, command_id, action = build_raffle_action(
+        cmd["trigger"], cmd["group"], queue_id, code, result_var="showPreviousRaffleResult"
+    )
+    command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id,
+                           mod_only=cmd.get("mod_only", False))
+    print(f"[showPreviousRaffle] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
+    _write_export(out_dir, "showPreviousRaffle", queue_id, queue_def, action, command, commands_config)
+
     print()
     print("To import:")
     print("  1. Open Streamer.bot")
@@ -3892,6 +4467,11 @@ def main():
     print("  chatactivitypoints — after importing, add the trigger manually:")
     print("  Open the 'chatactivitypoints' action -> Triggers -> Add -> Twitch Chat Message")
     print("  Set User Cooldown = 30 seconds on that trigger to limit one reward per 30 s per viewer.")
+    print()
+    print("Raffle bot (join / openRaffle / closeRaffle / drawRaffle / showPreviousRaffle):")
+    print("  No extra configuration required — raffle state is stored in Streamer.bot global variables.")
+    print("  Raffle history is saved to: %APPDATA%\\Streamer.bot\\raffle_history.json")
+    print("  openRaffle / closeRaffle / drawRaffle / showPreviousRaffle are mod-only (grantType=3).")
     print()
     print("OpenAI enhancement (optional, 8ball only):")
     print('  Settings -> Variables -> add "openai_api_key" (persisted global variable)')

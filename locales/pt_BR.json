@@ -567,6 +567,34 @@
       "header": "🏆 Top pontos:",
       "entry": "#{rank} {username} — {points} pts",
       "notAvailable": "StreamElements não está configurado"
+    },
+    "raffle": {
+      "join": {
+        "joined": "@{user} entrou no sorteio! 🎉",
+        "alreadyJoined": "@{user}, você já está participando!",
+        "notOpen": "Não há sorteio aberto no momento."
+      },
+      "openRaffle": {
+        "opened": "🎁 Sorteio aberto: {title}! Digite !join para participar.",
+        "noTitle": "Uso: !openRaffle <título>"
+      },
+      "closeRaffle": {
+        "closed": "✅ Sorteio encerrado.",
+        "notOpen": "Não há sorteio aberto para encerrar."
+      },
+      "drawRaffle": {
+        "starting": "🎲 Sorteio encerrado! Começando os sorteios em 10 segundos...",
+        "top5Winner": "🏆 Vencedor do Top 5: @{user}",
+        "rankedWinner": "🎮 Vencedor do sorteio ranqueado: @{user}",
+        "extraWinner": "✨ Vencedor do sorteio extra: @{user}",
+        "noJoined": "Nenhum usuário entrou no sorteio.",
+        "notOpen": "Não há sorteio aberto para realizar.",
+        "leaderboardError": "Não foi possível buscar o leaderboard — sorteios podem ser incompletos."
+      },
+      "showPreviousRaffle": {
+        "template": "📜 Último sorteio: {title} | {date} | Top5: {top5} | Ranking: {ranked} | Extra: {extra}",
+        "noHistory": "Nenhum sorteio anterior encontrado."
+      }
     }
   }
 }

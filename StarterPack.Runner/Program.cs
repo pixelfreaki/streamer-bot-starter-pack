@@ -198,6 +198,35 @@ string topHeader      = topElement.GetProperty("header").GetString()!;
 string topEntry       = topElement.GetProperty("entry").GetString()!;
 string topNotAvailable = topElement.GetProperty("notAvailable").GetString()!;
 
+// raffle
+var raffleElement       = commandsElement.GetProperty("raffle");
+var joinEl              = raffleElement.GetProperty("join");
+string joinJoined           = joinEl.GetProperty("joined").GetString()!;
+string joinAlreadyJoined    = joinEl.GetProperty("alreadyJoined").GetString()!;
+string joinNotOpen          = joinEl.GetProperty("notOpen").GetString()!;
+var openEl              = raffleElement.GetProperty("openRaffle");
+string openOpened           = openEl.GetProperty("opened").GetString()!;
+string openNoTitle          = openEl.GetProperty("noTitle").GetString()!;
+var closeEl             = raffleElement.GetProperty("closeRaffle");
+string closeClosed          = closeEl.GetProperty("closed").GetString()!;
+string closeNotOpen         = closeEl.GetProperty("notOpen").GetString()!;
+var drawEl              = raffleElement.GetProperty("drawRaffle");
+string drawStarting         = drawEl.GetProperty("starting").GetString()!;
+string drawTop5Winner       = drawEl.GetProperty("top5Winner").GetString()!;
+string drawRankedWinner     = drawEl.GetProperty("rankedWinner").GetString()!;
+string drawExtraWinner      = drawEl.GetProperty("extraWinner").GetString()!;
+string drawNoJoined         = drawEl.GetProperty("noJoined").GetString()!;
+string drawNotOpen          = drawEl.GetProperty("notOpen").GetString()!;
+string drawLeaderboardError = drawEl.GetProperty("leaderboardError").GetString()!;
+var showEl              = raffleElement.GetProperty("showPreviousRaffle");
+string showTemplate         = showEl.GetProperty("template").GetString()!;
+string showNoHistory        = showEl.GetProperty("noHistory").GetString()!;
+
+// Build shared raffle state and history
+IRaffleState raffleState     = new InMemoryRaffleState();
+string raffleHistoryPath     = Path.Combine(baseDir, "raffle_history.json");
+IRaffleHistory raffleHistory = new JsonFileRaffleHistory(raffleHistoryPath);
+
 // Register commands
 var commands = new Dictionary<string, ICommand>(StringComparer.OrdinalIgnoreCase)
 {
@@ -232,6 +261,14 @@ var commands = new Dictionary<string, ICommand>(StringComparer.OrdinalIgnoreCase
     ["points"]         = new PointsCommand(pointsMessage, pointsNotAvailable, pointsNotFound, seService),
     ["top"]            = new TopCommand("top",   topHeader, topEntry, topNotAvailable, 5,  seService),
     ["top10"]          = new TopCommand("top10", topHeader, topEntry, topNotAvailable, 10, seService),
+    ["join"]           = new JoinCommand(joinJoined, joinAlreadyJoined, joinNotOpen, raffleState),
+    ["openraffle"]     = new OpenRaffleCommand(openOpened, openNoTitle, raffleState),
+    ["closeraffle"]    = new CloseRaffleCommand(closeClosed, closeNotOpen, raffleState),
+    ["drawraffle"]     = new DrawRaffleCommand(
+                             drawStarting, drawTop5Winner, drawRankedWinner, drawExtraWinner,
+                             drawNoJoined, drawNotOpen, drawLeaderboardError,
+                             raffleState, raffleHistory, seService),
+    ["showpreviousraffle"] = new ShowPreviousRaffleCommand(showTemplate, showNoHistory, raffleHistory),
 };
 
 string cmdList = string.Join(" ", commands.Keys.Order().Select(k => $"!{k}"));
@@ -240,6 +277,7 @@ commands["commands"] = new InfoCommand("commands", commandsFormat.Replace("{comm
 Console.WriteLine($"Streamer.bot Runner [{locale}] — type !<command> [input] or 'exit' to quit");
 Console.WriteLine($"Available commands: {string.Join(", ", commands.Keys.Select(k => $"!{k}"))}");
 Console.WriteLine("Chat simulation: type  chat [username] message  to test activity points");
+Console.WriteLine("Raffle simulation: !openRaffle <title>  |  !join  |  !drawRaffle  |  !showPreviousRaffle");
 Console.WriteLine();
 
 while (true)

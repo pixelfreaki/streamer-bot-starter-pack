@@ -220,5 +220,44 @@
     "queue": "info",
     "group": "StreamElements",
     "action_id": "d7e8f9a0-b1c2-3456-d7e8-f9a0b1c23456"
+  },
+  "join": {
+    "trigger": "!join",
+    "queue": "fun",
+    "group": "Raffle",
+    "action_id": "a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890",
+    "command_id": "b2c3d4e5-f6a7-8901-b2c3-d4e5f6a78901"
+  },
+  "openRaffle": {
+    "trigger": "!openRaffle",
+    "queue": "fun",
+    "group": "Raffle",
+    "mod_only": true,
+    "action_id": "c3d4e5f6-a7b8-9012-c3d4-e5f6a7b89012",
+    "command_id": "d4e5f6a7-b8c9-0123-d4e5-f6a7b8c90123"
+  },
+  "closeRaffle": {
+    "trigger": "!closeRaffle",
+    "queue": "fun",
+    "group": "Raffle",
+    "mod_only": true,
+    "action_id": "e5f6a7b8-c9d0-1234-e5f6-a7b8c9d01234",
+    "command_id": "f6a7b8c9-d0e1-2345-f6a7-b8c9d0e12345"
+  },
+  "drawRaffle": {
+    "trigger": "!drawRaffle",
+    "queue": "fun",
+    "group": "Raffle",
+    "mod_only": true,
+    "action_id": "a7b8c9d0-e1f2-3456-a7b8-c9d0e1f23456",
+    "command_id": "b8c9d0e1-f2a3-4567-b8c9-d0e1f2a34567"
+  },
+  "showPreviousRaffle": {
+    "trigger": "!showPreviousRaffle",
+    "queue": "fun",
+    "group": "Raffle",
+    "mod_only": true,
+    "action_id": "c9d0e1f2-a3b4-5678-c9d0-e1f2a3b45678",
+    "command_id": "d0e1f2a3-b4c5-6789-d0e1-f2a3b4c56789"
   }
 }
