@@ -8,43 +8,83 @@ A C#-first command pack for [Streamer.bot](https://streamer.bot). Commands are c
 
 ### Standard commands
 
-| Command | Description | AI? |
+| Command | Description | Access |
 |---|---|---|
-| `!8ball` | Magic 8-ball answer | Optional (OpenAI enhanced) |
-| `!joke` | Random joke, supports a topic (`!joke cats`) | Optional (OpenAI generated) |
-| `!flipcoin` | Flip a coin — guess HEAD or TAIL | No |
-| `!fortune` | Random fortune message | No |
-| `!lurk` | Lurk message | No |
-| `!translate` | Translates a message | Optional (OpenAI) |
-| `!russianroulette` | 1-in-6 chance of dying | No |
-| `!sacrifice` | Sacrifice a user | No |
-| `!clip` | Create a Twitch clip | No |
-| `!shoutout` | Shout out another streamer | No |
-| `!settitle` | Set stream title (mod only) | No |
-| `!setgame` | Set stream category (mod only) | No |
-| `!accountage` | How old is a user's account | No |
-| `!followage` | How long a user has been following | No |
-| `!uptime` | Stream uptime | No |
-| `!time` | Current time for the streamer | No |
-| `!scene` | Switch OBS scene (mod only) | No |
-| `!pc` | Streamer's PC specs | No |
-| `!gear` | Streamer's gear | No |
-| `!peripherals` | Streamer's peripherals | No |
-| `!commands` | List all available commands | No |
+| `!8ball` | Magic 8-ball answer | Everyone |
+| `!joke` | Random joke, supports a topic (`!joke cats`) | Everyone |
+| `!flipcoin` | Flip a coin — guess HEAD or TAIL | Everyone |
+| `!fortune` | Random fortune message | Everyone |
+| `!lurk` | Lurk message | Everyone |
+| `!translate` | Translate a message | Everyone |
+| `!russianroulette` | 1-in-6 chance of dying | Everyone |
+| `!sacrifice` | Sacrifice a user | Everyone |
+| `!clip` | Create a Twitch clip | Everyone |
+| `!shoutout` | Shout out another streamer | Everyone |
+| `!settitle` | Set stream title | Mod only |
+| `!setgame` | Set stream category | Mod only |
+| `!accountage` | How old is a user's Twitch account | Everyone |
+| `!followage` | How long a user has been following | Everyone |
+| `!uptime` | Stream uptime | Everyone |
+| `!time` | Current time for the streamer | Everyone |
+| `!scene` | Switch OBS scene | Mod only |
+| `!pc` | Streamer's PC specs | Everyone |
+| `!gear` | Streamer's gear | Everyone |
+| `!peripherals` | Streamer's peripherals | Everyone |
+| `!commands` | List all available commands | Everyone |
 
 ### AI_Licia persona commands
 
-These commands are backed by [AI_Licia](https://www.getailicia.com). AI_Licia sends her response directly to chat — the bot just triggers her. Every command has a local fallback for when AI_Licia is offline.
+Backed by [AI_Licia](https://www.getailicia.com). AI_Licia sends her response directly to Twitch chat — the bot just triggers her. Every command has a local fallback.
 
 | Command | Description |
 |---|---|
 | `!oracle` | The Oracle answers your question |
 | `!horoscope` | Dark horoscope reading |
-| `!curse` | Cast a curse |
+| `!curse` | Cast a curse on a viewer |
 | `!omen` | Reveal an omen |
 | `!tarot` | Tarot card reading |
 | `!judge` | Judge another viewer |
 | `!hex` | One viewer hexes another |
+
+### StreamElements points commands
+
+Require a StreamElements account. See [StreamElements setup](#streamelements-setup-optional) below.
+
+| Command | Description | Access |
+|---|---|---|
+| `!points` | Show your current point balance | Everyone |
+| `!top` | Show the top 5 on the leaderboard | Everyone |
+| `!top10` | Show the full top 10 leaderboard | Everyone |
+
+There is also a `chatactivitypoints` event action (no command trigger) that awards points when a user sends a chat message. You must add the **Twitch Chat Message** trigger manually in Streamer.bot with a 30-second user cooldown.
+
+### Raffle bot
+
+A full raffle system that integrates with the StreamElements leaderboard. StreamElements is optional — all three draws degrade gracefully when unavailable.
+
+| Command | Description | Access |
+|---|---|---|
+| `!openRaffle <title>` | Open a new raffle | Mod only |
+| `!join` | Join the current raffle | Everyone |
+| `!closeRaffle` | Close entries (draw is not triggered yet) | Mod only |
+| `!drawRaffle` | Close entries and draw all three winners | Mod only |
+| `!showPreviousRaffle` | Show the result of the last raffle | Mod only |
+
+#### How the draws work
+
+`!drawRaffle` announces three winners in sequence (10-second delay before draws start):
+
+| Draw | Pool | Requires `!join`? |
+|---|---|---|
+| **Top 5** | Random pick from StreamElements leaderboard positions 1–5 | No |
+| **Top 10** | Walk the full leaderboard top-to-bottom; collect up to 10 users who joined; pick 1 at random | Yes |
+| **Bonus** | Random pick from all users who joined | Yes |
+
+**Top 10 example:** If the leaderboard has 19 users and only positions 16 and 17 joined, the Top 10 pool is `[position 16, position 17]` — higher-ranked users who didn't join are skipped. The winner is drawn from whoever showed up.
+
+Each draw reports its outcome to chat even when no winner is available (e.g. "StreamElements not configured — draw skipped", "None of the participants appear on the leaderboard — draw skipped").
+
+Raffle history is persisted to `%APPDATA%\Streamer.bot\raffle_history.json`.
 
 ---
 
@@ -98,7 +138,9 @@ dotnet run --project StarterPack.Runner
 
 Then type commands like `!8ball will it rain?`, `!flipcoin head`, or `!oracle will I survive?`.
 
-AI_Licia commands show `[AI_Licia triggered — response will appear in chat]` in the runner since the response goes directly to Twitch chat.
+Raffle commands work in the runner: `!openRaffle Test`, `!join`, `!drawRaffle`.
+
+AI_Licia commands show `[AI_Licia triggered — response will appear in chat]` since responses go directly to Twitch.
 
 ---
 
@@ -122,13 +164,13 @@ For each command you want to add:
 4. Open or paste the contents of `generated/streamerbot/<command>.import.txt`
 5. Click **Import**
 
-Repeat for each command. You can import all of them or only the ones you need.
+Repeat for each command. You can import all of them or only the ones you need. Re-importing an existing command is safe — each action has a stable UUID so duplicates are never created.
 
 ---
 
 ## OpenAI setup (optional)
 
-OpenAI enhances `!8ball`, `!joke`, and `!translate`. Every command works without it — AI is never required.
+OpenAI enhances `!8ball`, `!joke`, and `!translate`. Every command works without it.
 
 ### Step 1 — Set your API key (local runner)
 
@@ -144,39 +186,33 @@ Create `appsettings.Development.json` in the project root (gitignored):
 
 ### Step 2 — Add the global variable in Streamer.bot
 
-The exported actions read the key from a Streamer.bot persisted global variable.
-
 1. Open **Streamer.bot**
 2. Go to **Settings → Variables**
 3. Click **Add** (persisted global variable)
-4. Set:
-   - **Name:** `openai_api_key`
-   - **Value:** your OpenAI API key (`sk-...`)
+4. Set **Name:** `openai_api_key`, **Value:** your OpenAI API key
 5. Click **Save**
 
-Once set, `!8ball` and `!joke` will use OpenAI automatically. If the variable is missing or the API call fails, both commands fall back to their local response pool.
+When set, `!8ball` and `!joke` use OpenAI automatically. If the variable is missing or the call fails, both commands fall back to their local response pool.
 
 ---
 
 ## AI_Licia setup (optional)
 
-AI_Licia powers the persona commands (`!oracle`, `!horoscope`, `!curse`, `!omen`, `!tarot`, `!judge`, `!hex`). She sends her response directly to Twitch chat — the bot just triggers her.
+AI_Licia powers the persona commands. She sends responses directly to Twitch chat — the bot just triggers her.
 
 ### Step 1 — Add the global variable in Streamer.bot
 
 1. Open **Streamer.bot**
 2. Go to **Settings → Variables**
 3. Click **Add** (persisted global variable)
-4. Set:
-   - **Name:** `ai_licia_key`
-   - **Value:** your AI_Licia API key
+4. Set **Name:** `ai_licia_key`, **Value:** your AI_Licia API key
 5. Click **Save**
 
-The exported actions read `ai_licia_key` at runtime. The channel name is read automatically from Streamer.bot's built-in `broadcastUserName` argument — no additional variable needed.
+The channel name is read automatically from Streamer.bot's `broadcastUserName` — no extra variable needed.
 
 ### Step 2 — Set your API key (local runner only)
 
-For local testing with the runner, add to `appsettings.Development.json`:
+Add to `appsettings.Development.json`:
 
 ```json
 {
@@ -187,7 +223,30 @@ For local testing with the runner, add to `appsettings.Development.json`:
 }
 ```
 
-When `AiLicia.ApiKey` and `AiLicia.ChannelName` are set, the runner triggers AI_Licia on persona commands. When not set, commands fall back to their local response pool.
+---
+
+## StreamElements setup (optional)
+
+Required for `!points`, `!top`, `!top10`, `chatactivitypoints`, and the **Top 5** / **Top 10** raffle draws.
+
+### Step 1 — Get your JWT token and channel ID
+
+1. Log in to [StreamElements](https://streamelements.com)
+2. Go to **Account → Show secrets** to find your JWT token
+3. Your channel ID is in the URL of your StreamElements dashboard
+
+### Step 2 — Add the global variables in Streamer.bot
+
+1. Open **Streamer.bot**
+2. Go to **Settings → Variables**
+3. Add two persisted global variables:
+
+| Name | Value |
+|---|---|
+| `se_jwt` | Your StreamElements JWT token |
+| `se_channel` | Your StreamElements channel ID |
+
+When both variables are set, all StreamElements commands and the raffle leaderboard draws activate automatically. When missing, those commands gracefully report that the service is unavailable.
 
 ---
 
