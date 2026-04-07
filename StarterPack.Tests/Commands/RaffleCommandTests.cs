@@ -27,7 +27,8 @@ public class RaffleCommandTests
     private static DrawRaffleCommand Draw(IRaffleState state, IRaffleHistory history,
         IStreamElementsService? se = null) =>
         new("Starting...", "Top5: @{user}", "Ranked: @{user}", "Extra: @{user}",
-            "No joined.", "Only {count} joined.", "Not open.", "Leaderboard error.", state, history, se);
+            "No joined.", "No leaderboard.", "No ranked winner.", "Only {count} joined.",
+            "Not open.", "Leaderboard error.", state, history, se);
 
     private static ShowPreviousRaffleCommand Show(IRaffleHistory history) =>
         new("Last: {title} | {date} | Top5: {top5} | Ranked: {ranked} | Extra: {extra}",
@@ -322,6 +323,48 @@ public class RaffleCommandTests
         // Ranked winner must be one of user11/user12/user13
         Assert.NotNull(session.RankedWinner);
         Assert.Contains(session.RankedWinner, joinedInLeaderboard);
+    }
+
+    [Fact]
+    public async Task DrawRaffle_NoLeaderboard_ShowsTop5NoLeaderboardMessage()
+    {
+        // SE not configured — top5 draw skipped, message shown instead
+        var state = State();
+        state.Open("Test");
+        state.AddUser("viewer1");
+
+        var result = await Draw(state, History()).ExecuteAsync(Ctx("mod"));
+
+        Assert.True(result.Success);
+        Assert.Contains("No leaderboard", result.Message);
+        Assert.DoesNotContain("Top5:", result.Message);
+    }
+
+    [Fact]
+    public async Task DrawRaffle_JoinedButNoneOnLeaderboard_ShowsRankedNoWinnerMessage()
+    {
+        // Leaderboard available, but no joined user appears in it
+        var seMock = new Mock<IStreamElementsService>();
+        seMock.Setup(s => s.IsAvailable).Returns(true);
+        seMock.Setup(s => s.GetTopAsync(50, default)).ReturnsAsync(
+            (IReadOnlyList<(string Username, long Points)>)new[]
+            {
+                ("topuser1", 1000L), ("topuser2", 900L),
+            });
+
+        var state = State();
+        state.Open("Test");
+        state.AddUser("outsider1"); // not on leaderboard
+        state.AddUser("outsider2"); // not on leaderboard
+
+        var history = History();
+        var result = await Draw(state, history, seMock.Object).ExecuteAsync(Ctx("mod"));
+
+        Assert.True(result.Success);
+        Assert.Contains("No ranked winner", result.Message);
+        Assert.Null(history.GetRecent(1)[0].RankedWinner);
+        // Extra draw still happens
+        Assert.True(result.Message.Contains("outsider1") || result.Message.Contains("outsider2"));
     }
 
     // ── ShowPreviousRaffleCommand ─────────────────────────────────────────────

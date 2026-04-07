@@ -13,6 +13,8 @@ public class DrawRaffleCommand : ICommand
     private readonly string _rankedWinner;
     private readonly string _extraWinner;
     private readonly string _noJoined;
+    private readonly string _top5NoLeaderboard;
+    private readonly string _rankedNoWinner;
     private readonly string _rankedNotEnough;
     private readonly string _notOpen;
     private readonly string _leaderboardError;
@@ -25,6 +27,8 @@ public class DrawRaffleCommand : ICommand
         string rankedWinner,
         string extraWinner,
         string noJoined,
+        string top5NoLeaderboard,
+        string rankedNoWinner,
         string rankedNotEnough,
         string notOpen,
         string leaderboardError,
@@ -32,17 +36,19 @@ public class DrawRaffleCommand : ICommand
         IRaffleHistory history,
         IStreamElementsService? se = null)
     {
-        _starting        = starting;
-        _top5Winner      = top5Winner;
-        _rankedWinner    = rankedWinner;
-        _extraWinner     = extraWinner;
-        _noJoined        = noJoined;
-        _rankedNotEnough = rankedNotEnough;
-        _notOpen         = notOpen;
-        _leaderboardError = leaderboardError;
-        _state           = state;
-        _history         = history;
-        _se              = se;
+        _starting          = starting;
+        _top5Winner        = top5Winner;
+        _rankedWinner      = rankedWinner;
+        _extraWinner       = extraWinner;
+        _noJoined          = noJoined;
+        _top5NoLeaderboard = top5NoLeaderboard;
+        _rankedNoWinner    = rankedNoWinner;
+        _rankedNotEnough   = rankedNotEnough;
+        _notOpen           = notOpen;
+        _leaderboardError  = leaderboardError;
+        _state             = state;
+        _history           = history;
+        _se                = se;
     }
 
     public async Task<CommandResult> ExecuteAsync(CommandContext context, CancellationToken cancellationToken = default)
@@ -105,16 +111,28 @@ public class DrawRaffleCommand : ICommand
         ));
 
         var lines = new List<string> { _starting };
-        if (top5   is not null) lines.Add(_top5Winner  .Replace("{user}", top5));
+
+        // Top 5 — always report outcome
+        if (top5 is not null)
+            lines.Add(_top5Winner.Replace("{user}", top5));
+        else
+            lines.Add(_top5NoLeaderboard);
+
         if (joined.Count == 0)
         {
             lines.Add(_noJoined);
         }
         else
         {
+            // Ranked — report winner, partial-pool warning, or no-qualifier message
             if (rankedPoolSize > 0 && rankedPoolSize < 10)
                 lines.Add(_rankedNotEnough.Replace("{count}", rankedPoolSize.ToString()));
-            if (ranked is not null) lines.Add(_rankedWinner.Replace("{user}", ranked));
+            if (ranked is not null)
+                lines.Add(_rankedWinner.Replace("{user}", ranked));
+            else if (leaderboard.Count > 0)
+                lines.Add(_rankedNoWinner);
+
+            // Extra — always has a winner when anyone joined
             lines.Add(_extraWinner.Replace("{user}", extra!));
         }
 

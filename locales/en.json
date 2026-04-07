@@ -575,8 +575,10 @@
         "top5Winner": "🏆 Top 5 winner: @{user}",
         "rankedWinner": "🎮 Ranked draw winner: @{user}",
         "extraWinner": "✨ Extra draw winner: @{user}",
-        "noJoined": "No one joined the raffle.",
-        "rankedNotEnough": "⚠️ Only {count} leaderboard user(s) joined — drawing from available pool.",
+        "noJoined": "No one joined the raffle — ranked and extra draws skipped.",
+        "top5NoLeaderboard": "🏆 Top 5: StreamElements is not configured or unavailable — draw skipped.",
+        "rankedNoWinner": "🎮 Ranked: None of the participants appear on the leaderboard — draw skipped.",
+        "rankedNotEnough": "⚠️ Only {count} leaderboard user(s) joined — drawing from the available pool.",
         "notOpen": "There is no open raffle to draw.",
         "leaderboardError": "Could not fetch leaderboard — draws may be incomplete."
       },

@@ -588,7 +588,9 @@
         "top5Winner": "🏆 Vencedor do Top 5: @{user}",
         "rankedWinner": "🎮 Vencedor do sorteio ranqueado: @{user}",
         "extraWinner": "✨ Vencedor do sorteio extra: @{user}",
-        "noJoined": "Nenhum usuário entrou no sorteio.",
+        "noJoined": "Nenhum usuário entrou no sorteio — sorteios ranqueado e extra ignorados.",
+        "top5NoLeaderboard": "🏆 Top 5: StreamElements não está configurado ou indisponível — sorteio ignorado.",
+        "rankedNoWinner": "🎮 Ranqueado: Nenhum participante está no leaderboard — sorteio ignorado.",
         "rankedNotEnough": "⚠️ Apenas {count} usuário(s) do leaderboard participou — sorteando com os disponíveis.",
         "notOpen": "Não há sorteio aberto para realizar.",
         "leaderboardError": "Não foi possível buscar o leaderboard — sorteios podem ser incompletos."

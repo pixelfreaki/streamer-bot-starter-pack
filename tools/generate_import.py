@@ -3288,7 +3288,7 @@ public class CPHInline
 def build_draw_raffle_code(
     starting_msg,
     top5_msg, ranked_msg, extra_msg,
-    no_joined_msg, ranked_not_enough_msg, not_open_msg,
+    no_joined_msg, top5_no_leaderboard_msg, ranked_no_winner_msg, ranked_not_enough_msg, not_open_msg,
     history_file_path="raffle_history.json",
 ):
     """
@@ -3309,8 +3309,10 @@ def build_draw_raffle_code(
     top5_lit      = csharp_literal(top5_msg)
     ranked_lit    = csharp_literal(ranked_msg)
     extra_lit     = csharp_literal(extra_msg)
-    no_joined_lit         = csharp_literal(no_joined_msg)
-    ranked_not_enough_lit = csharp_literal(ranked_not_enough_msg)
+    no_joined_lit             = csharp_literal(no_joined_msg)
+    top5_no_leaderboard_lit   = csharp_literal(top5_no_leaderboard_msg)
+    ranked_no_winner_lit      = csharp_literal(ranked_no_winner_msg)
+    ranked_not_enough_lit     = csharp_literal(ranked_not_enough_msg)
     not_open_lit          = csharp_literal(not_open_msg)
     history_lit   = csharp_literal(history_file_path)
     ph_user       = csharp_literal("{user}")
@@ -3386,8 +3388,11 @@ public class CPHInline
             int pool = Math.Min(5, leaderboard.Count);
             top5Winner = leaderboard[rng.Next(pool)];
         }}
+        // Top 5 -- always report outcome
         if (top5Winner != null)
             CPH.TwitchAnnounce({top5_lit}.Replace({ph_user}, top5Winner), false, "purple");
+        else
+            CPH.TwitchAnnounce({top5_no_leaderboard_lit}, false, "orange");
 
         // Ranked and Extra draws require !join
         string rankedWinner = null;
@@ -3411,9 +3416,11 @@ public class CPHInline
                     rankedWinner = eligible[rng.Next(eligible.Count)];
                 if (eligible.Count > 0 && eligible.Count < 10)
                     CPH.TwitchAnnounce({ranked_not_enough_lit}.Replace("{{count}}", eligible.Count.ToString()), false, "orange");
+                if (rankedWinner != null)
+                    CPH.TwitchAnnounce({ranked_lit}.Replace({ph_user}, rankedWinner), false, "purple");
+                else
+                    CPH.TwitchAnnounce({ranked_no_winner_lit}, false, "orange");
             }}
-            if (rankedWinner != null)
-                CPH.TwitchAnnounce({ranked_lit}.Replace({ph_user}, rankedWinner), false, "purple");
 
             // Extra draw: random from all joined
             extraWinner  = joined[rng.Next(joined.Length)];
@@ -4439,6 +4446,8 @@ def main():
         draw_data["rankedWinner"],
         draw_data["extraWinner"],
         draw_data["noJoined"],
+        draw_data["top5NoLeaderboard"],
+        draw_data["rankedNoWinner"],
         draw_data["rankedNotEnough"],
         draw_data["notOpen"],
     )
