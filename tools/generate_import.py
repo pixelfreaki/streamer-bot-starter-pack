@@ -3768,6 +3768,9 @@ def build_chat_activity_action(name, group, queue_id, code):
                 "references": [
                     "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\mscorlib.dll",
                     "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.dll",
+                
+        
+                      "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.Core.dll",
                 ],
                 "byteCode": code_bc,
                 "precompile": False, "delayStart": False,
