@@ -576,6 +576,7 @@
         "rankedWinner": "🎮 Ranked draw winner: @{user}",
         "extraWinner": "✨ Extra draw winner: @{user}",
         "noJoined": "No one joined the raffle.",
+        "rankedNotEnough": "⚠️ Only {count} leaderboard user(s) joined — drawing from available pool.",
         "notOpen": "There is no open raffle to draw.",
         "leaderboardError": "Could not fetch leaderboard — draws may be incomplete."
       },

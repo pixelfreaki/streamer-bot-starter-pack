@@ -13,6 +13,7 @@ public class DrawRaffleCommand : ICommand
     private readonly string _rankedWinner;
     private readonly string _extraWinner;
     private readonly string _noJoined;
+    private readonly string _rankedNotEnough;
     private readonly string _notOpen;
     private readonly string _leaderboardError;
 
@@ -24,6 +25,7 @@ public class DrawRaffleCommand : ICommand
         string rankedWinner,
         string extraWinner,
         string noJoined,
+        string rankedNotEnough,
         string notOpen,
         string leaderboardError,
         IRaffleState state,
@@ -35,6 +37,7 @@ public class DrawRaffleCommand : ICommand
         _rankedWinner    = rankedWinner;
         _extraWinner     = extraWinner;
         _noJoined        = noJoined;
+        _rankedNotEnough = rankedNotEnough;
         _notOpen         = notOpen;
         _leaderboardError = leaderboardError;
         _state           = state;
@@ -75,6 +78,7 @@ public class DrawRaffleCommand : ICommand
 
         // ── Ranked draw: walk leaderboard, collect up to 10 joined users ──────
         string? ranked = null;
+        int rankedPoolSize = 0;
         if (joined.Count > 0 && leaderboard.Count > 0)
         {
             var eligibleRanked = leaderboard
@@ -82,6 +86,7 @@ public class DrawRaffleCommand : ICommand
                 .Take(10)
                 .Select(e => e.Username)
                 .ToList();
+            rankedPoolSize = eligibleRanked.Count;
             if (eligibleRanked.Count > 0)
                 ranked = eligibleRanked[rng.Next(eligibleRanked.Count)];
         }
@@ -107,6 +112,8 @@ public class DrawRaffleCommand : ICommand
         }
         else
         {
+            if (rankedPoolSize > 0 && rankedPoolSize < 10)
+                lines.Add(_rankedNotEnough.Replace("{count}", rankedPoolSize.ToString()));
             if (ranked is not null) lines.Add(_rankedWinner.Replace("{user}", ranked));
             lines.Add(_extraWinner.Replace("{user}", extra!));
         }

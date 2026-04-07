@@ -217,6 +217,7 @@ string drawTop5Winner       = drawEl.GetProperty("top5Winner").GetString()!;
 string drawRankedWinner     = drawEl.GetProperty("rankedWinner").GetString()!;
 string drawExtraWinner      = drawEl.GetProperty("extraWinner").GetString()!;
 string drawNoJoined         = drawEl.GetProperty("noJoined").GetString()!;
+string drawRankedNotEnough  = drawEl.GetProperty("rankedNotEnough").GetString()!;
 string drawNotOpen          = drawEl.GetProperty("notOpen").GetString()!;
 string drawLeaderboardError = drawEl.GetProperty("leaderboardError").GetString()!;
 var showEl              = raffleElement.GetProperty("showPreviousRaffle");
@@ -267,7 +268,7 @@ var commands = new Dictionary<string, ICommand>(StringComparer.OrdinalIgnoreCase
     ["closeraffle"]    = new CloseRaffleCommand(closeClosed, closeNotOpen, raffleState),
     ["drawraffle"]     = new DrawRaffleCommand(
                              drawStarting, drawTop5Winner, drawRankedWinner, drawExtraWinner,
-                             drawNoJoined, drawNotOpen, drawLeaderboardError,
+                             drawNoJoined, drawRankedNotEnough, drawNotOpen, drawLeaderboardError,
                              raffleState, raffleHistory, seService),
     ["showpreviousraffle"] = new ShowPreviousRaffleCommand(showTemplate, showNoHistory, raffleHistory),
 };

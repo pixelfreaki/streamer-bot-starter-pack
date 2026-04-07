@@ -3288,7 +3288,7 @@ public class CPHInline
 def build_draw_raffle_code(
     starting_msg,
     top5_msg, ranked_msg, extra_msg,
-    no_joined_msg, not_open_msg,
+    no_joined_msg, ranked_not_enough_msg, not_open_msg,
     history_file_path="raffle_history.json",
 ):
     """
@@ -3309,8 +3309,9 @@ def build_draw_raffle_code(
     top5_lit      = csharp_literal(top5_msg)
     ranked_lit    = csharp_literal(ranked_msg)
     extra_lit     = csharp_literal(extra_msg)
-    no_joined_lit = csharp_literal(no_joined_msg)
-    not_open_lit  = csharp_literal(not_open_msg)
+    no_joined_lit         = csharp_literal(no_joined_msg)
+    ranked_not_enough_lit = csharp_literal(ranked_not_enough_msg)
+    not_open_lit          = csharp_literal(not_open_msg)
     history_lit   = csharp_literal(history_file_path)
     ph_user       = csharp_literal("{user}")
     pts_key       = csharp_literal('"points":')
@@ -3408,6 +3409,8 @@ public class CPHInline
                 }}
                 if (eligible.Count > 0)
                     rankedWinner = eligible[rng.Next(eligible.Count)];
+                if (eligible.Count > 0 && eligible.Count < 10)
+                    CPH.TwitchAnnounce({ranked_not_enough_lit}.Replace("{count}", eligible.Count.ToString()), false, "orange");
             }}
             if (rankedWinner != null)
                 CPH.TwitchAnnounce({ranked_lit}.Replace({ph_user}, rankedWinner), false, "purple");
@@ -4435,6 +4438,7 @@ def main():
         draw_data["rankedWinner"],
         draw_data["extraWinner"],
         draw_data["noJoined"],
+        draw_data["rankedNotEnough"],
         draw_data["notOpen"],
     )
     action_id, command_id, action = build_raffle_action(

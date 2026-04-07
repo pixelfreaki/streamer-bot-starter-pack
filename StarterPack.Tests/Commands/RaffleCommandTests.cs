@@ -27,7 +27,7 @@ public class RaffleCommandTests
     private static DrawRaffleCommand Draw(IRaffleState state, IRaffleHistory history,
         IStreamElementsService? se = null) =>
         new("Starting...", "Top5: @{user}", "Ranked: @{user}", "Extra: @{user}",
-            "No joined.", "Not open.", "Leaderboard error.", state, history, se);
+            "No joined.", "Only {count} joined.", "Not open.", "Leaderboard error.", state, history, se);
 
     private static ShowPreviousRaffleCommand Show(IRaffleHistory history) =>
         new("Last: {title} | {date} | Top5: {top5} | Ranked: {ranked} | Extra: {extra}",
