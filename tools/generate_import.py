@@ -3287,8 +3287,8 @@ public class CPHInline
 
 def build_draw_raffle_code(
     starting_msg,
-    top5_msg, ranked_msg, extra_msg,
-    no_joined_msg, top5_no_leaderboard_msg, ranked_no_winner_msg, ranked_not_enough_msg, not_open_msg,
+    top5_msg, top10_msg, bonus_msg,
+    no_joined_msg, top5_no_leaderboard_msg, top10_no_winner_msg, top10_not_enough_msg, not_open_msg,
     history_file_path="raffle_history.json",
 ):
     """
@@ -3306,13 +3306,13 @@ def build_draw_raffle_code(
     - Returns true; all chat sends are inline (no platform switch output needed).
     """
     starting_lit  = csharp_literal(starting_msg)
-    top5_lit      = csharp_literal(top5_msg)
-    ranked_lit    = csharp_literal(ranked_msg)
-    extra_lit     = csharp_literal(extra_msg)
+    top5_lit          = csharp_literal(top5_msg)
+    top10_lit         = csharp_literal(top10_msg)
+    bonus_lit         = csharp_literal(bonus_msg)
     no_joined_lit             = csharp_literal(no_joined_msg)
     top5_no_leaderboard_lit   = csharp_literal(top5_no_leaderboard_msg)
-    ranked_no_winner_lit      = csharp_literal(ranked_no_winner_msg)
-    ranked_not_enough_lit     = csharp_literal(ranked_not_enough_msg)
+    top10_no_winner_lit       = csharp_literal(top10_no_winner_msg)
+    top10_not_enough_lit      = csharp_literal(top10_not_enough_msg)
     not_open_lit          = csharp_literal(not_open_msg)
     history_lit   = csharp_literal(history_file_path)
     ph_user       = csharp_literal("{user}")
@@ -3395,15 +3395,15 @@ public class CPHInline
             CPH.TwitchAnnounce({top5_no_leaderboard_lit}, false, "orange");
 
         // Ranked and Extra draws require !join
-        string rankedWinner = null;
-        string extraWinner  = null;
+        string top10Winner = null;
+        string bonusWinner  = null;
         if (joined.Length == 0)
         {{
             CPH.TwitchAnnounce({no_joined_lit}, false, "purple");
         }}
         else
         {{
-            // Ranked draw: walk leaderboard, collect up to 10 joined users, pick 1
+            // Top 10 draw: walk leaderboard, collect up to 10 joined users, pick 1
             if (leaderboard.Count > 0)
             {{
                 var eligible = new List<string>();
@@ -3413,18 +3413,18 @@ public class CPHInline
                     if (eligible.Count >= 10) break;
                 }}
                 if (eligible.Count > 0)
-                    rankedWinner = eligible[rng.Next(eligible.Count)];
+                    top10Winner = eligible[rng.Next(eligible.Count)];
                 if (eligible.Count > 0 && eligible.Count < 10)
-                    CPH.TwitchAnnounce({ranked_not_enough_lit}.Replace("{{count}}", eligible.Count.ToString()), false, "orange");
-                if (rankedWinner != null)
-                    CPH.TwitchAnnounce({ranked_lit}.Replace({ph_user}, rankedWinner), false, "purple");
+                    CPH.TwitchAnnounce({top10_not_enough_lit}.Replace("{{count}}", eligible.Count.ToString()), false, "orange");
+                if (top10Winner != null)
+                    CPH.TwitchAnnounce({top10_lit}.Replace({ph_user}, top10Winner), false, "purple");
                 else
-                    CPH.TwitchAnnounce({ranked_no_winner_lit}, false, "orange");
+                    CPH.TwitchAnnounce({top10_no_winner_lit}, false, "orange");
             }}
 
             // Extra draw: random from all joined
-            extraWinner  = joined[rng.Next(joined.Length)];
-            CPH.TwitchAnnounce({extra_lit}.Replace({ph_user}, extraWinner), false, "purple");
+            bonusWinner  = joined[rng.Next(joined.Length)];
+            CPH.TwitchAnnounce({bonus_lit}.Replace({ph_user}, bonusWinner), false, "purple");
         }}
 
         // Save to history file
@@ -3435,15 +3435,15 @@ public class CPHInline
                 "Streamer.bot",
                 {history_lit});
             string top5Json    = top5Winner   != null ? "\\"" + top5Winner   + "\\"" : "null";
-            string rankedJson  = rankedWinner != null ? "\\"" + rankedWinner + "\\"" : "null";
-            string extraJson   = extraWinner  != null ? "\\"" + extraWinner  + "\\"" : "null";
+            string top10Json  = top10Winner != null ? "\\"" + top10Winner + "\\"" : "null";
+            string bonusJson   = bonusWinner  != null ? "\\"" + bonusWinner  + "\\"" : "null";
             string newEntry    = "  {{" +
                 "\\"title\\":\\"" + title.Replace("\\\\", "\\\\\\\\").Replace("\\"", "\\\\\\"") + "\\"," +
                 "\\"date\\":\\"" + openedAt + "\\"," +
                 "\\"joinedCount\\":" + joined.Length + "," +
                 "\\"top5Winner\\":" + top5Json + "," +
-                "\\"rankedWinner\\":" + rankedJson + "," +
-                "\\"extraWinner\\":" + extraJson +
+                "\\"top10Winner\\":" + top10Json + "," +
+                "\\"bonusWinner\\":" + bonusJson +
                 "}}";
             string existing = File.Exists(historyPath) ? File.ReadAllText(historyPath).Trim() : "[]";
             string updated;
@@ -3474,8 +3474,8 @@ def build_show_previous_raffle_code(template_msg, no_history_msg, history_file_p
     ph_title       = csharp_literal("{title}")
     ph_date        = csharp_literal("{date}")
     ph_top5        = csharp_literal("{top5}")
-    ph_ranked      = csharp_literal("{ranked}")
-    ph_extra       = csharp_literal("{extra}")
+    ph_top10       = csharp_literal("{top10}")
+    ph_bonus       = csharp_literal("{bonus}")
 
     return f"""\
 using System;
@@ -3512,21 +3512,21 @@ public class CPHInline
         string title  = ExtractString(entry, "title");
         string date   = ExtractString(entry, "date");
         string top5   = ExtractString(entry, "top5Winner");
-        string ranked = ExtractString(entry, "rankedWinner");
-        string extra  = ExtractString(entry, "extraWinner");
+        string top10  = ExtractString(entry, "top10Winner");
+        string bonus  = ExtractString(entry, "bonusWinner");
 
         // Trim date to yyyy-MM-dd
         if (date.Length >= 10) date = date.Substring(0, 10);
-        if (top5   == null) top5   = "-";
-        if (ranked == null) ranked = "-";
-        if (extra  == null) extra  = "-";
+        if (top5  == null) top5  = "-";
+        if (top10 == null) top10 = "-";
+        if (bonus == null) bonus = "-";
 
         string msg = {template_lit}
             .Replace({ph_title},  title  ?? "?")
             .Replace({ph_date},   date)
             .Replace({ph_top5},   top5)
-            .Replace({ph_ranked}, ranked)
-            .Replace({ph_extra},  extra);
+            .Replace({ph_top10}, top10)
+            .Replace({ph_bonus},  bonus);
 
         CPH.SetArgument("showPreviousRaffleResult", msg);
         return true;
@@ -4443,12 +4443,12 @@ def main():
     code = build_draw_raffle_code(
         draw_data["starting"],
         draw_data["top5Winner"],
-        draw_data["rankedWinner"],
-        draw_data["extraWinner"],
+        draw_data["top10Winner"],
+        draw_data["bonusWinner"],
         draw_data["noJoined"],
         draw_data["top5NoLeaderboard"],
-        draw_data["rankedNoWinner"],
-        draw_data["rankedNotEnough"],
+        draw_data["top10NoWinner"],
+        draw_data["top10NotEnough"],
         draw_data["notOpen"],
     )
     action_id, command_id, action = build_raffle_action(

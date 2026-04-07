@@ -573,17 +573,17 @@
       "drawRaffle": {
         "starting": "🎲 Raffle closed! Starting draws in 10 seconds...",
         "top5Winner": "🏆 Top 5 winner: @{user}",
-        "rankedWinner": "🎮 Ranked draw winner: @{user}",
-        "extraWinner": "✨ Extra draw winner: @{user}",
-        "noJoined": "No one joined the raffle — ranked and extra draws skipped.",
+        "top10Winner": "🎮 Top 10 winner: @{user}",
+        "bonusWinner": "🎁 Bonus winner: @{user}",
+        "noJoined": "No one joined the raffle — Top 10 and Bonus draws skipped.",
         "top5NoLeaderboard": "🏆 Top 5: StreamElements is not configured or unavailable — draw skipped.",
-        "rankedNoWinner": "🎮 Ranked: None of the participants appear on the leaderboard — draw skipped.",
-        "rankedNotEnough": "⚠️ Only {count} leaderboard user(s) joined — drawing from the available pool.",
+        "top10NoWinner": "🎮 Top 10: None of the participants appear on the leaderboard — draw skipped.",
+        "top10NotEnough": "⚠️ Only {count} of the top 10 leaderboard user(s) joined — drawing from the available pool.",
         "notOpen": "There is no open raffle to draw.",
         "leaderboardError": "Could not fetch leaderboard — draws may be incomplete."
       },
       "showPreviousRaffle": {
-        "template": "📜 Last raffle: {title} | {date} | Top5: {top5} | Ranked: {ranked} | Extra: {extra}",
+        "template": "📜 Last raffle: {title} | {date} | Top5: {top5} | Top10: {top10} | Bonus: {bonus}",
         "noHistory": "No previous raffle found."
       }
     }

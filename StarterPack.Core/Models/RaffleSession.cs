@@ -5,6 +5,6 @@ public record RaffleSession(
     DateTime Date,
     int JoinedCount,
     string? Top5Winner,
-    string? RankedWinner,
-    string? ExtraWinner
+    string? Top10Winner,
+    string? BonusWinner
 );

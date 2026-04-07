@@ -10,12 +10,12 @@ public class DrawRaffleCommand : ICommand
     private readonly IStreamElementsService? _se;
     private readonly string _starting;
     private readonly string _top5Winner;
-    private readonly string _rankedWinner;
-    private readonly string _extraWinner;
+    private readonly string _top10Winner;
+    private readonly string _bonusWinner;
     private readonly string _noJoined;
     private readonly string _top5NoLeaderboard;
-    private readonly string _rankedNoWinner;
-    private readonly string _rankedNotEnough;
+    private readonly string _top10NoWinner;
+    private readonly string _top10NotEnough;
     private readonly string _notOpen;
     private readonly string _leaderboardError;
 
@@ -24,12 +24,12 @@ public class DrawRaffleCommand : ICommand
     public DrawRaffleCommand(
         string starting,
         string top5Winner,
-        string rankedWinner,
-        string extraWinner,
+        string top10Winner,
+        string bonusWinner,
         string noJoined,
         string top5NoLeaderboard,
-        string rankedNoWinner,
-        string rankedNotEnough,
+        string top10NoWinner,
+        string top10NotEnough,
         string notOpen,
         string leaderboardError,
         IRaffleState state,
@@ -38,12 +38,12 @@ public class DrawRaffleCommand : ICommand
     {
         _starting          = starting;
         _top5Winner        = top5Winner;
-        _rankedWinner      = rankedWinner;
-        _extraWinner       = extraWinner;
+        _top10Winner       = top10Winner;
+        _bonusWinner       = bonusWinner;
         _noJoined          = noJoined;
         _top5NoLeaderboard = top5NoLeaderboard;
-        _rankedNoWinner    = rankedNoWinner;
-        _rankedNotEnough   = rankedNotEnough;
+        _top10NoWinner     = top10NoWinner;
+        _top10NotEnough    = top10NotEnough;
         _notOpen           = notOpen;
         _leaderboardError  = leaderboardError;
         _state             = state;
@@ -56,9 +56,9 @@ public class DrawRaffleCommand : ICommand
         if (!_state.IsOpen)
             return CommandResult.Fail(_notOpen);
 
-        string title    = _state.Title;
+        string title      = _state.Title;
         DateTime openedAt = _state.OpenedAt;
-        var joined      = _state.JoinedUsers.ToList();
+        var joined        = _state.JoinedUsers.ToList();
         _state.Close();
 
         IReadOnlyList<(string Username, long Points)> leaderboard =
@@ -70,7 +70,7 @@ public class DrawRaffleCommand : ICommand
             catch { /* fall through to draws with empty leaderboard */ }
         }
 
-        var rng = new Random();
+        var rng       = new Random();
         var joinedSet = new HashSet<string>(joined, StringComparer.OrdinalIgnoreCase);
 
         // ── Top 5 draw: random from positions 1–5 in leaderboard ──────────────
@@ -82,32 +82,32 @@ public class DrawRaffleCommand : ICommand
             top5 = pool[rng.Next(pool.Count)];
         }
 
-        // ── Ranked draw: walk leaderboard, collect up to 10 joined users ──────
-        string? ranked = null;
-        int rankedPoolSize = 0;
+        // ── Top 10 draw: walk leaderboard, collect up to 10 joined users ──────
+        string? top10 = null;
+        int top10PoolSize = 0;
         if (joined.Count > 0 && leaderboard.Count > 0)
         {
-            var eligibleRanked = leaderboard
+            var eligible = leaderboard
                 .Where(e => joinedSet.Contains(e.Username))
                 .Take(10)
                 .Select(e => e.Username)
                 .ToList();
-            rankedPoolSize = eligibleRanked.Count;
-            if (eligibleRanked.Count > 0)
-                ranked = eligibleRanked[rng.Next(eligibleRanked.Count)];
+            top10PoolSize = eligible.Count;
+            if (eligible.Count > 0)
+                top10 = eligible[rng.Next(eligible.Count)];
         }
 
-        // ── Extra draw: random from all joined users ───────────────────────────
-        string? extra = joined.Count > 0 ? joined[rng.Next(joined.Count)] : null;
+        // ── Bonus draw: random from all joined users ───────────────────────────
+        string? bonus = joined.Count > 0 ? joined[rng.Next(joined.Count)] : null;
 
         // ── Persist session to history ─────────────────────────────────────────
         _history.Save(new RaffleSession(
-            Title:        title,
-            Date:         openedAt,
-            JoinedCount:  joined.Count,
-            Top5Winner:   top5,
-            RankedWinner: ranked,
-            ExtraWinner:  extra
+            Title:       title,
+            Date:        openedAt,
+            JoinedCount: joined.Count,
+            Top5Winner:  top5,
+            Top10Winner: top10,
+            BonusWinner: bonus
         ));
 
         var lines = new List<string> { _starting };
@@ -124,16 +124,16 @@ public class DrawRaffleCommand : ICommand
         }
         else
         {
-            // Ranked — report winner, partial-pool warning, or no-qualifier message
-            if (rankedPoolSize > 0 && rankedPoolSize < 10)
-                lines.Add(_rankedNotEnough.Replace("{count}", rankedPoolSize.ToString()));
-            if (ranked is not null)
-                lines.Add(_rankedWinner.Replace("{user}", ranked));
+            // Top 10 — report winner, partial-pool warning, or no-qualifier message
+            if (top10PoolSize > 0 && top10PoolSize < 10)
+                lines.Add(_top10NotEnough.Replace("{count}", top10PoolSize.ToString()));
+            if (top10 is not null)
+                lines.Add(_top10Winner.Replace("{user}", top10));
             else if (leaderboard.Count > 0)
-                lines.Add(_rankedNoWinner);
+                lines.Add(_top10NoWinner);
 
-            // Extra — always has a winner when anyone joined
-            lines.Add(_extraWinner.Replace("{user}", extra!));
+            // Bonus — always has a winner when anyone joined
+            lines.Add(_bonusWinner.Replace("{user}", bonus!));
         }
 
         return CommandResult.Ok(string.Join("\n", lines));

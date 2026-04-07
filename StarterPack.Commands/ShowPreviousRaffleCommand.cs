@@ -31,9 +31,9 @@ public class ShowPreviousRaffleCommand : ICommand
         string msg = _template
             .Replace("{title}",  s.Title)
             .Replace("{date}",   s.Date.ToString("yyyy-MM-dd"))
-            .Replace("{top5}",   s.Top5Winner   ?? "-")
-            .Replace("{ranked}", s.RankedWinner ?? "-")
-            .Replace("{extra}",  s.ExtraWinner  ?? "-");
+            .Replace("{top5}",   s.Top5Winner  ?? "-")
+            .Replace("{top10}",  s.Top10Winner ?? "-")
+            .Replace("{bonus}",  s.BonusWinner ?? "-");
 
         return Task.FromResult(CommandResult.Ok(msg));
     }

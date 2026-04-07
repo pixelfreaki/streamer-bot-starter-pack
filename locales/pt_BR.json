@@ -586,17 +586,17 @@
       "drawRaffle": {
         "starting": "🎲 Sorteio encerrado! Começando os sorteios em 10 segundos...",
         "top5Winner": "🏆 Vencedor do Top 5: @{user}",
-        "rankedWinner": "🎮 Vencedor do sorteio ranqueado: @{user}",
-        "extraWinner": "✨ Vencedor do sorteio extra: @{user}",
-        "noJoined": "Nenhum usuário entrou no sorteio — sorteios ranqueado e extra ignorados.",
+        "top10Winner": "🎮 Vencedor do Top 10: @{user}",
+        "bonusWinner": "🎁 Vencedor do Bônus: @{user}",
+        "noJoined": "Nenhum usuário entrou no sorteio — sorteios Top 10 e Bônus ignorados.",
         "top5NoLeaderboard": "🏆 Top 5: StreamElements não está configurado ou indisponível — sorteio ignorado.",
-        "rankedNoWinner": "🎮 Ranqueado: Nenhum participante está no leaderboard — sorteio ignorado.",
-        "rankedNotEnough": "⚠️ Apenas {count} usuário(s) do leaderboard participou — sorteando com os disponíveis.",
+        "top10NoWinner": "🎮 Top 10: Nenhum participante está no leaderboard — sorteio ignorado.",
+        "top10NotEnough": "⚠️ Apenas {count} usuário(s) do top 10 do leaderboard participou — sorteando com os disponíveis.",
         "notOpen": "Não há sorteio aberto para realizar.",
         "leaderboardError": "Não foi possível buscar o leaderboard — sorteios podem ser incompletos."
       },
       "showPreviousRaffle": {
-        "template": "📜 Último sorteio: {title} | {date} | Top5: {top5} | Ranking: {ranked} | Extra: {extra}",
+        "template": "📜 Último sorteio: {title} | {date} | Top5: {top5} | Top10: {top10} | Bônus: {bonus}",
         "noHistory": "Nenhum sorteio anterior encontrado."
       }
     }

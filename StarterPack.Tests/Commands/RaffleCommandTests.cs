@@ -26,12 +26,12 @@ public class RaffleCommandTests
 
     private static DrawRaffleCommand Draw(IRaffleState state, IRaffleHistory history,
         IStreamElementsService? se = null) =>
-        new("Starting...", "Top5: @{user}", "Ranked: @{user}", "Extra: @{user}",
-            "No joined.", "No leaderboard.", "No ranked winner.", "Only {count} joined.",
+        new("Starting...", "Top5: @{user}", "Top10: @{user}", "Bonus: @{user}",
+            "No joined.", "No leaderboard.", "No top10 winner.", "Only {count} joined.",
             "Not open.", "Leaderboard error.", state, history, se);
 
     private static ShowPreviousRaffleCommand Show(IRaffleHistory history) =>
-        new("Last: {title} | {date} | Top5: {top5} | Ranked: {ranked} | Extra: {extra}",
+        new("Last: {title} | {date} | Top5: {top5} | Top10: {top10} | Bonus: {bonus}",
             "No history.", history);
 
     // ── InMemoryRaffleState ───────────────────────────────────────────────────
@@ -210,8 +210,8 @@ public class RaffleCommandTests
         Assert.True(result.Success);
         var session = history.GetRecent(1)[0];
         Assert.NotNull(session.Top5Winner);
-        Assert.Null(session.RankedWinner);
-        Assert.Null(session.ExtraWinner);
+        Assert.Null(session.Top10Winner);
+        Assert.Null(session.BonusWinner);
         Assert.Contains("No joined", result.Message);
         Assert.True(
             result.Message.Contains("ranked1") ||
@@ -237,7 +237,7 @@ public class RaffleCommandTests
     }
 
     [Fact]
-    public async Task DrawRaffle_ExtraWinnerIsOneOfJoined()
+    public async Task DrawRaffle_BonusWinnerIsOneOfJoined()
     {
         var state = State();
         state.Open("Test");
@@ -264,7 +264,7 @@ public class RaffleCommandTests
         Assert.Single(recent);
         Assert.Equal("Campanha dos 500", recent[0].Title);
         Assert.Equal(1, recent[0].JoinedCount);
-        Assert.NotNull(recent[0].ExtraWinner);
+        Assert.NotNull(recent[0].BonusWinner);
     }
 
     [Fact]
@@ -292,12 +292,12 @@ public class RaffleCommandTests
         // Top5 winner must be ranked1, ranked2, or ranked3
         Assert.NotNull(session.Top5Winner);
         Assert.Contains(session.Top5Winner, new[] { "ranked1", "ranked2", "ranked3" });
-        // Ranked winner must be ranked2 (only joined user in leaderboard)
-        Assert.Equal("ranked2", session.RankedWinner);
+        // Top10 winner must be ranked2 (only joined user in leaderboard)
+        Assert.Equal("ranked2", session.Top10Winner);
     }
 
     [Fact]
-    public async Task DrawRaffle_RankedDraw_CollectsUpTo10JoinedFromLeaderboard()
+    public async Task DrawRaffle_Top10Draw_CollectsUpTo10JoinedFromLeaderboard()
     {
         // Leaderboard has 15 users, only positions 11-13 joined
         var leaderboard = Enumerable.Range(1, 15)
@@ -320,9 +320,9 @@ public class RaffleCommandTests
         await Draw(state, history, seMock.Object).ExecuteAsync(Ctx("mod"));
 
         var session = history.GetRecent(1)[0];
-        // Ranked winner must be one of user11/user12/user13
-        Assert.NotNull(session.RankedWinner);
-        Assert.Contains(session.RankedWinner, joinedInLeaderboard);
+        // Top10 winner must be one of user11/user12/user13
+        Assert.NotNull(session.Top10Winner);
+        Assert.Contains(session.Top10Winner, joinedInLeaderboard);
     }
 
     [Fact]
@@ -341,7 +341,7 @@ public class RaffleCommandTests
     }
 
     [Fact]
-    public async Task DrawRaffle_JoinedButNoneOnLeaderboard_ShowsRankedNoWinnerMessage()
+    public async Task DrawRaffle_JoinedButNoneOnLeaderboard_ShowsTop10NoWinnerMessage()
     {
         // Leaderboard available, but no joined user appears in it
         var seMock = new Mock<IStreamElementsService>();
@@ -361,9 +361,9 @@ public class RaffleCommandTests
         var result = await Draw(state, history, seMock.Object).ExecuteAsync(Ctx("mod"));
 
         Assert.True(result.Success);
-        Assert.Contains("No ranked winner", result.Message);
-        Assert.Null(history.GetRecent(1)[0].RankedWinner);
-        // Extra draw still happens
+        Assert.Contains("No top10 winner", result.Message);
+        Assert.Null(history.GetRecent(1)[0].Top10Winner);
+        // Bonus draw still happens
         Assert.True(result.Message.Contains("outsider1") || result.Message.Contains("outsider2"));
     }
 
@@ -385,9 +385,9 @@ public class RaffleCommandTests
             Title:        "Campanha 500",
             Date:         new DateTime(2026, 4, 7, 12, 0, 0, DateTimeKind.Utc),
             JoinedCount:  42,
-            Top5Winner:   "winner1",
-            RankedWinner: "winner2",
-            ExtraWinner:  "winner3"
+            Top5Winner:  "winner1",
+            Top10Winner: "winner2",
+            BonusWinner: "winner3"
         ));
 
         var result = await Show(history).ExecuteAsync(Ctx("mod"));
@@ -403,8 +403,8 @@ public class RaffleCommandTests
     public async Task ShowPreviousRaffle_ReturnsLastSavedSession()
     {
         var history = History();
-        history.Save(new RaffleSession("Old", DateTime.UtcNow, 5, null, null, "extra1"));
-        history.Save(new RaffleSession("New", DateTime.UtcNow, 10, "t5", "r1", "e1"));
+        history.Save(new RaffleSession("Old", DateTime.UtcNow, 5, null, null, "bonus1"));
+        history.Save(new RaffleSession("New", DateTime.UtcNow, 10, "t5", "t10", "b1"));
 
         var result = await Show(history).ExecuteAsync(Ctx("mod"));
         Assert.Contains("New", result.Message);
