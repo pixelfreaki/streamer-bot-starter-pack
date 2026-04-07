@@ -207,6 +207,7 @@ string joinNotOpen          = joinEl.GetProperty("notOpen").GetString()!;
 var openEl              = raffleElement.GetProperty("openRaffle");
 string openOpened           = openEl.GetProperty("opened").GetString()!;
 string openNoTitle          = openEl.GetProperty("noTitle").GetString()!;
+string openAlreadyOpen      = openEl.GetProperty("alreadyOpen").GetString()!;
 var closeEl             = raffleElement.GetProperty("closeRaffle");
 string closeClosed          = closeEl.GetProperty("closed").GetString()!;
 string closeNotOpen         = closeEl.GetProperty("notOpen").GetString()!;
@@ -262,7 +263,7 @@ var commands = new Dictionary<string, ICommand>(StringComparer.OrdinalIgnoreCase
     ["top"]            = new TopCommand("top",   topHeader, topEntry, topNotAvailable, 5,  seService),
     ["top10"]          = new TopCommand("top10", topHeader, topEntry, topNotAvailable, 10, seService),
     ["join"]           = new JoinCommand(joinJoined, joinAlreadyJoined, joinNotOpen, raffleState),
-    ["openraffle"]     = new OpenRaffleCommand(openOpened, openNoTitle, raffleState),
+    ["openraffle"]     = new OpenRaffleCommand(openOpened, openNoTitle, openAlreadyOpen, raffleState),
     ["closeraffle"]    = new CloseRaffleCommand(closeClosed, closeNotOpen, raffleState),
     ["drawraffle"]     = new DrawRaffleCommand(
                              drawStarting, drawTop5Winner, drawRankedWinner, drawExtraWinner,

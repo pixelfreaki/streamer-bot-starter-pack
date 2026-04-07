@@ -563,7 +563,8 @@
       },
       "openRaffle": {
         "opened": "🎁 Raffle open: {title}! Type !join to enter.",
-        "noTitle": "Usage: !openRaffle <title>"
+        "noTitle": "Usage: !openRaffle <title>",
+        "alreadyOpen": "A raffle is already open: {title}. Use !closeRaffle first."
       },
       "closeRaffle": {
         "closed": "✅ Raffle closed.",

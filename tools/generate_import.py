@@ -3206,41 +3206,50 @@ public class CPHInline
 }}"""
 
 
-def build_open_raffle_code(opened_msg, no_title_msg):
+def build_open_raffle_code(opened_msg, no_title_msg, already_open_msg):
     """
     Generates inline C# for !openRaffle.
 
+    - Rejects if raffle_open is already true.
     - Reads rawInput for the raffle title.
     - Sets raffle_open=true, raffle_title, raffle_opened_at, clears raffle_joined.
     - Sets %openRaffleResult% for the platform switch to send.
     """
-    opened_lit   = csharp_literal(opened_msg)
-    no_title_lit = csharp_literal(no_title_msg)
-    ph_title     = csharp_literal("{title}")
+    opened_lit       = csharp_literal(opened_msg)
+    no_title_lit     = csharp_literal(no_title_msg)
+    already_open_lit = csharp_literal(already_open_msg)
+    ph_title         = csharp_literal("{title}")
 
-    return f"""\
-using System;
+    return f"""using System;
 
 public class CPHInline
-{{
+{{{{
     public bool Execute()
-    {{
+    {{{{
+        bool isOpen = CPH.GetGlobalVar<bool>("raffle_open", true);
+        if (isOpen)
+        {{{{
+            string currentTitle = CPH.GetGlobalVar<string>("raffle_title", true) ?? "";
+            CPH.SetArgument("openRaffleResult", {{already_open_lit}}.Replace({{ph_title}}, currentTitle));
+            return true;
+        }}}}
+
         string title = args.ContainsKey("rawInput") ? args["rawInput"].ToString().Trim() : "";
         if (title.Length == 0)
-        {{
-            CPH.SetArgument("openRaffleResult", {no_title_lit});
+        {{{{
+            CPH.SetArgument("openRaffleResult", {{no_title_lit}});
             return true;
-        }}
+        }}}}
 
         CPH.SetGlobalVar("raffle_open",      true,  true);
         CPH.SetGlobalVar("raffle_title",     title, true);
         CPH.SetGlobalVar("raffle_opened_at", DateTime.UtcNow.ToString("o"), true);
         CPH.SetGlobalVar("raffle_joined",    "",    true);
 
-        CPH.SetArgument("openRaffleResult", {opened_lit}.Replace({ph_title}, title));
+        CPH.SetArgument("openRaffleResult", {{opened_lit}}.Replace({{ph_title}}, title));
         return true;
-    }}
-}}"""
+    }}}}
+}}}}"""
 
 
 def build_close_raffle_code(closed_msg, not_open_msg):
@@ -4382,7 +4391,7 @@ def main():
     queue_def = queues_config[queue_key]
     queue_id  = queue_def["id"]
 
-    code = build_open_raffle_code(open_data["opened"], open_data["noTitle"])
+    code = build_open_raffle_code(open_data["opened"], open_data["noTitle"], open_data["alreadyOpen"])
     action_id, command_id, action = build_raffle_action(
         cmd["trigger"], cmd["group"], queue_id, code, result_var="openRaffleResult"
     )

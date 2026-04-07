@@ -576,7 +576,8 @@
       },
       "openRaffle": {
         "opened": "🎁 Sorteio aberto: {title}! Digite !join para participar.",
-        "noTitle": "Uso: !openRaffle <título>"
+        "noTitle": "Uso: !openRaffle <título>",
+        "alreadyOpen": "Já há um sorteio aberto: {title}. Use !closeRaffle primeiro."
       },
       "closeRaffle": {
         "closed": "✅ Sorteio encerrado.",

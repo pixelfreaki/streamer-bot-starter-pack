@@ -19,7 +19,7 @@ public class RaffleCommandTests
         new("@{user} joined!", "@{user} already in.", "No raffle open.", state);
 
     private static OpenRaffleCommand Open(IRaffleState state) =>
-        new("Raffle open: {title}!", "Usage: !openRaffle <title>", state);
+        new("Raffle open: {title}!", "Usage: !openRaffle <title>", "Already open: {title}.", state);
 
     private static CloseRaffleCommand Close(IRaffleState state) =>
         new("Raffle closed.", "No raffle to close.", state);
@@ -135,6 +135,18 @@ public class RaffleCommandTests
         Assert.Contains("Campanha dos 500", result.Message);
         Assert.True(state.IsOpen);
         Assert.Equal("Campanha dos 500", state.Title);
+    }
+
+    [Fact]
+    public async Task OpenRaffle_WhenAlreadyOpen_ReturnsFail()
+    {
+        var state = State();
+        state.Open("Existing Raffle");
+        var result = await Open(state).ExecuteAsync(Ctx("mod", "New Raffle"));
+        Assert.False(result.Success);
+        Assert.Contains("Existing Raffle", result.Message);
+        Assert.True(state.IsOpen);
+        Assert.Equal("Existing Raffle", state.Title); // unchanged
     }
 
     // ── CloseRaffleCommand ────────────────────────────────────────────────────
