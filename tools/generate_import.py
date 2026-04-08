@@ -3760,12 +3760,11 @@ def build_raffle_action(name, group, queue_id, code, result_var, not_available_m
     return action_id, command_id, action
 
 
-def build_chat_activity_action(name, group, queue_id, code):
+def build_chat_activity_action(name, group, queue_id, code, timer_id, trigger_id):
     """
     Builds the Chat Activity Points event action.
 
-    No command trigger — user must add the 'Twitch Chat Message' event trigger manually
-    in Streamer.bot and set User Cooldown = 30s on that trigger.
+    Includes a type-701 Timer trigger (30s cooldown) so no manual setup is needed.
     excludeFromHistory = True to avoid flooding the action history log.
     concurrent = True to handle simultaneous chat messages correctly.
     """
@@ -3778,7 +3777,15 @@ def build_chat_activity_action(name, group, queue_id, code):
         "excludeFromHistory": True, "excludeFromPending": False,
         "name": name, "group": group,
         "alwaysRun": False, "randomAction": False, "concurrent": True,
-        "triggers": [],
+        "triggers": [
+            {
+                "timerId": timer_id,
+                "id": trigger_id,
+                "type": 701,
+                "enabled": True,
+                "exclusions": [],
+            }
+        ],
         "subActions": [
             {"value": "Code", "color": "", "id": str(uuid.uuid4()),
              "weight": 0.0, "type": 1009, "parentId": None, "enabled": True, "index": 0},
@@ -4392,10 +4399,21 @@ def main():
                            "WeirdChamp", "BASED", "OMEGADANCE", "peepoLeave", "peepoArrive"]),
     )
     action_id, action = build_chat_activity_action(
-        "chatactivitypoints", cmd["group"], queue_id, code
+        "chatactivitypoints", cmd["group"], queue_id, code, cmd["timer_id"], cmd["trigger_id"]
     )
     print(f"[chatactivitypoints] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    _write_export(out_dir, "chatactivitypoints", queue_id, queue_def, action, command=None, commands_config=commands_config)
+    timer_obj = {
+        "id": cmd["timer_id"],
+        "name": "Twitch Chat Message Cooldown",
+        "enabled": False,
+        "repeat": True,
+        "interval": 30,
+        "randomInterval": False,
+        "upperInterval": 0,
+        "lines": 0,
+        "counter": 0,
+    }
+    _write_export(out_dir, "chatactivitypoints", queue_id, queue_def, action, command=None, commands_config=commands_config, timers=[timer_obj])
 
     # ── raffle: join ───────────────────────────────────────────────────────────
     raffle_data = locale_data["commands"]["raffle"]
@@ -4512,9 +4530,8 @@ def main():
     print("  se_jwt    = your StreamElements JWT token (from streamelements.com/dashboard/account/security)")
     print("  se_channel = your StreamElements channel ObjectId (decode your JWT -- field 'channel')")
     print()
-    print("  chatactivitypoints — after importing, add the trigger manually:")
-    print("  Open the 'chatactivitypoints' action -> Triggers -> Add -> Twitch Chat Message")
-    print("  Set User Cooldown = 30 seconds on that trigger to limit one reward per 30 s per viewer.")
+    print("  chatactivitypoints — the 30-second timer trigger is embedded in the import.")
+    print("  No manual trigger setup needed.")
     print()
     print("Raffle bot (join / openRaffle / closeRaffle / drawRaffle / showPreviousRaffle):")
     print("  No extra configuration required — raffle state is stored in Streamer.bot global variables.")
@@ -4532,7 +4549,7 @@ def main():
     print("  Falls back to local responses if the key is missing or on any error.")
 
 
-def _write_export(out_dir, name, queue_id, queue_def, action, command=None, commands_config=None):
+def _write_export(out_dir, name, queue_id, queue_def, action, command=None, commands_config=None, timers=None):
     # Apply stable action/command IDs from config so re-imports don't create duplicates.
     if commands_config and name in commands_config:
         cmd_def = commands_config[name]
@@ -4568,7 +4585,7 @@ def _write_export(out_dir, name, queue_id, queue_def, action, command=None, comm
             "commands": [] if command is None else [command],
             "websocketServers": [],
             "websocketClients": [],
-            "timers": [],
+            "timers": timers or [],
         },
         "version": EXPORT_VERSION,
         "exportedFrom": EXPORTED_FROM,
