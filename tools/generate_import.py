@@ -3589,26 +3589,45 @@ public class CPHInline
         if (args.ContainsKey("emoteCount") && args["emoteCount"] != null)
             int.TryParse(args["emoteCount"].ToString(), out emoteCount);
 
-        if (message.StartsWith("!"))                          return true;
-        if (message.Trim().Length < {min_length})             return true;
-        if (Bots.Contains(user))                              return true;
-        if (IsEmoteOnly(message, emoteCount))                 return true;
+        CPH.LogInfo("[chatactivity] user=" + user + " msg=" + message + " emotes=" + emoteCount);
+
+        if (message.StartsWith("!"))              {{ CPH.LogInfo("[chatactivity] skip=command");    return true; }}
+        if (message.Trim().Length < {min_length}) {{ CPH.LogInfo("[chatactivity] skip=too_short"); return true; }}
+        if (Bots.Contains(user))                  {{ CPH.LogInfo("[chatactivity] skip=bot");        return true; }}
+        if (IsEmoteOnly(message, emoteCount))     {{ CPH.LogInfo("[chatactivity] skip=emote_only"); return true; }}
 
         string seJwt     = CPH.GetGlobalVar<string>("se_jwt", true);
         string seChannel = CPH.GetGlobalVar<string>("se_channel", true);
-        if (string.IsNullOrEmpty(seJwt) || string.IsNullOrEmpty(seChannel)) return true;
+        if (string.IsNullOrEmpty(seJwt) || string.IsNullOrEmpty(seChannel))
+        {{
+            CPH.LogInfo("[chatactivity] skip=se_not_configured jwt_empty=" + string.IsNullOrEmpty(seJwt) + " channel_empty=" + string.IsNullOrEmpty(seChannel));
+            return true;
+        }}
 
         try
         {{
             string url = "https://api.streamelements.com/kappa/v2/points/"
                 + seChannel + "/" + user + "/{points_url_suffix}";
+            CPH.LogInfo("[chatactivity] PUT " + url);
             using (var client = new WebClient())
             {{
                 client.Headers[HttpRequestHeader.Authorization] = "Bearer " + seJwt;
-                client.UploadData(url, "PUT", new byte[0]);
+                byte[] resp = client.UploadData(url, "PUT", new byte[0]);
+                CPH.LogInfo("[chatactivity] response=" + System.Text.Encoding.UTF8.GetString(resp));
             }}
         }}
-        catch {{ }}
+        catch (WebException ex)
+        {{
+            string errBody = "";
+            if (ex.Response != null)
+                using (var sr = new System.IO.StreamReader(ex.Response.GetResponseStream()))
+                    errBody = sr.ReadToEnd();
+            CPH.LogInfo("[chatactivity] error=" + ex.Message + " body=" + errBody);
+        }}
+        catch (Exception ex)
+        {{
+            CPH.LogInfo("[chatactivity] error=" + ex.Message);
+        }}
         return true;
     }}
 
