@@ -3501,95 +3501,88 @@ public class CPHInline
 }}"""
 
 
-def build_show_previous_raffle_code(template_msg, no_history_msg, history_file_path="raffle_history.json"):
-    """
-    Generates inline C# for !showPreviousRaffle.
-
-    - Reads raffle_history.json from Streamer.bot data directory.
-    - Parses the last entry and announces it.
-    - Sets %showPreviousRaffleResult% for the platform switch.
-    """
-    template_lit   = csharp_literal(template_msg)
-    no_history_lit = csharp_literal(no_history_msg)
-    history_lit    = csharp_literal(history_file_path)
-    ph_title       = csharp_literal("{title}")
-    ph_date        = csharp_literal("{date}")
-    ph_top5        = csharp_literal("{top5}")
-    ph_top10       = csharp_literal("{top10}")
-    ph_bonus       = csharp_literal("{bonus}")
-
-    return f"""\
-using System;
-using System.IO;
-
-public class CPHInline
-{{
-    public bool Execute()
-    {{
-        string historyPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Streamer.bot",
-            {history_lit});
-
-        if (!File.Exists(historyPath))
-        {{
-            CPH.SetArgument("showPreviousRaffleResult", {no_history_lit});
-            return true;
-        }}
-
-        string json = File.ReadAllText(historyPath).Trim();
-        // Find the last {{ ... }} object in the array
-        int last = json.LastIndexOf("{{");
-        if (last < 0)
-        {{
-            CPH.SetArgument("showPreviousRaffleResult", {no_history_lit});
-            return true;
-        }}
-
-        string entry = json.Substring(last);
-        int end = entry.IndexOf("}}");
-        if (end >= 0) entry = entry.Substring(0, end + 1);
-
-        string title  = ExtractString(entry, "title");
-        string date   = ExtractString(entry, "date");
-        string top5   = ExtractString(entry, "top5Winner");
-        string top10  = ExtractString(entry, "top10Winner");
-        string bonus  = ExtractString(entry, "bonusWinner");
-
-        // Trim date to yyyy-MM-dd
-        if (date.Length >= 10) date = date.Substring(0, 10);
-        if (top5  == null) top5  = "-";
-        if (top10 == null) top10 = "-";
-        if (bonus == null) bonus = "-";
-
-        string msg = {template_lit}
-            .Replace({ph_title},  title  ?? "?")
-            .Replace({ph_date},   date)
-            .Replace({ph_top5},   top5)
-            .Replace({ph_top10}, top10)
-            .Replace({ph_bonus},  bonus);
-
-        CPH.SetArgument("showPreviousRaffleResult", msg);
-        return true;
-    }}
-
-    private static string ExtractString(string json, string key)
-    {{
-        string k = "\\"" + key + "\\":\\"";
-        int idx = json.IndexOf(k);
-        if (idx < 0)
-        {{
-            // try null value
-            string kn = "\\"" + key + "\\":null";
-            return json.IndexOf(kn) >= 0 ? null : null;
-        }}
-        int start = idx + k.Length;
-        int end   = json.IndexOf('"', start);
-        if (end < 0) return null;
-        return json.Substring(start, end - start);
-    }}
-}}"""
-
+def build_show_previous_raffle_code(template_msg, no_history_msg, history_file_path="raffle_history.json"):
+    """
+    Generates inline C# for !showPreviousRaffle.
+
+    Announces directly via CPH.TwitchAnnounce (same as drawRaffle) to avoid
+    the empty-variable silent-drop issue with the type-23 platform switch.
+    """
+    template_lit   = csharp_literal(template_msg)
+    no_history_lit = csharp_literal(no_history_msg)
+    history_lit    = csharp_literal(history_file_path)
+    ph_title       = csharp_literal("{title}")
+    ph_date        = csharp_literal("{date}")
+    ph_top5        = csharp_literal("{top5}")
+    ph_top10       = csharp_literal("{top10}")
+    ph_bonus       = csharp_literal("{bonus}")
+
+    return f"""using System;
+using System.IO;
+
+public class CPHInline
+{{
+    public bool Execute()
+    {{
+        string historyPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "Streamer.bot",
+            {history_lit});
+
+        CPH.LogInfo("[showPreviousRaffle] path=" + historyPath + " exists=" + File.Exists(historyPath));
+
+        if (!File.Exists(historyPath))
+        {{
+            CPH.TwitchAnnounce({no_history_lit}, false, "purple");
+            return true;
+        }}
+
+        string json = File.ReadAllText(historyPath).Trim();
+        int last = json.LastIndexOf("{{");
+        if (last < 0)
+        {{
+            CPH.TwitchAnnounce({no_history_lit}, false, "purple");
+            return true;
+        }}
+
+        string entry = json.Substring(last);
+        int end = entry.IndexOf("}}");
+        if (end >= 0) entry = entry.Substring(0, end + 1);
+
+        string title  = ExtractString(entry, "title");
+        string date   = ExtractString(entry, "date");
+        string top5   = ExtractString(entry, "top5Winner");
+        string top10  = ExtractString(entry, "top10Winner");
+        string bonus  = ExtractString(entry, "bonusWinner");
+
+        if (date != null && date.Length >= 10) date = date.Substring(0, 10);
+        if (top5  == null) top5  = "-";
+        if (top10 == null) top10 = "-";
+        if (bonus == null) bonus = "-";
+
+        string msg = {template_lit}
+            .Replace({ph_title},  title  ?? "?")
+            .Replace({ph_date},   date   ?? "?")
+            .Replace({ph_top5},   top5)
+            .Replace({ph_top10},  top10)
+            .Replace({ph_bonus},  bonus);
+
+        CPH.LogInfo("[showPreviousRaffle] msg=" + msg);
+        CPH.TwitchAnnounce(msg, false, "purple");
+        return true;
+    }}
+
+    private static string ExtractString(string json, string key)
+    {{
+        string k = "\"" + key + "\":\"";
+        int idx = json.IndexOf(k);
+        if (idx < 0) return null;
+        int start = idx + k.Length;
+        int end   = json.IndexOf('\"', start);
+        if (end < 0) return null;
+        return json.Substring(start, end - start);
+    }}
+}}"""
 
 def build_chat_activity_points_code(points, min_length, bots, bttv_emotes):
     """
@@ -4560,7 +4553,7 @@ def main():
 
     code = build_show_previous_raffle_code(show_data["template"], show_data["noHistory"])
     action_id, command_id, action = build_raffle_action(
-        cmd["trigger"], cmd["group"], queue_id, code, result_var="showPreviousRaffleResult"
+        cmd["trigger"], cmd["group"], queue_id, code, result_var=None
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id,
                            mod_only=cmd.get("mod_only", False))
