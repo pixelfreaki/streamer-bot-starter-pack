@@ -29,10 +29,11 @@ public class JoinCommand : ICommand
         if (!_state.IsOpen)
             return Task.FromResult(CommandResult.Fail(_notOpen));
 
-        bool added = _state.AddUser(context.UserName);
+        string user = context.UserName.TrimStart('@');
+        bool added = _state.AddUser(user);
         string msg = added
-            ? _joined.Replace("{user}", context.UserName)
-            : _alreadyJoined.Replace("{user}", context.UserName);
+            ? _joined.Replace("{user}", user)
+            : _alreadyJoined.Replace("{user}", user);
 
         return Task.FromResult(CommandResult.Ok(msg));
     }

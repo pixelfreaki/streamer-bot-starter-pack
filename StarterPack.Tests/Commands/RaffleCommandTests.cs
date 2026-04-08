@@ -88,6 +88,18 @@ public class RaffleCommandTests
     // ── JoinCommand ───────────────────────────────────────────────────────────
 
     [Fact]
+    public async Task Join_UserNameStoredWithoutAtPrefix()
+    {
+        // Streamer.bot sometimes provides usernames with a leading @.
+        // The command must store the bare username so SE leaderboard comparisons work.
+        var state = State();
+        state.Open("Test");
+        await Join(state).ExecuteAsync(Ctx("@viewer1"));
+        Assert.Contains("viewer1", state.JoinedUsers);
+        Assert.DoesNotContain("@viewer1", state.JoinedUsers);
+    }
+
+    [Fact]
     public async Task Join_WhenClosed_ReturnsFail()
     {
         var result = await Join(State()).ExecuteAsync(Ctx("viewer1"));
@@ -448,5 +460,48 @@ public class RaffleCommandTests
         var result = await Show(history).ExecuteAsync(Ctx("mod"));
         Assert.Contains("New", result.Message);
         Assert.DoesNotContain("Old", result.Message);
+    }
+
+    [Fact]
+    public async Task ShowPreviousRaffle_NullWinnersRenderedAsDash()
+    {
+        // All three draws can be null (e.g. no leaderboard, nobody joined).
+        var history = History();
+        history.Save(new RaffleSession("Test", DateTime.UtcNow, 0, null, null, null));
+
+        var result = await Show(history).ExecuteAsync(Ctx("mod"));
+        Assert.True(result.Success);
+        // Each null winner slot must render as "-", not empty or literal "null"
+        Assert.DoesNotContain("null", result.Message);
+        Assert.Contains("Top5: -",  result.Message);
+        Assert.Contains("Top10: -", result.Message);
+        Assert.Contains("Bonus: -", result.Message);
+    }
+
+    // ── @ prefix handling ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task DrawRaffle_LeaderboardMatchesJoinedUserWithAtPrefix()
+    {
+        // If a user joined as "@viewer1" the @ must be stripped so the leaderboard
+        // comparison ("viewer1") still finds a match.
+        var seMock = new Mock<IStreamElementsService>();
+        seMock.Setup(s => s.IsAvailable).Returns(true);
+        seMock.Setup(s => s.GetTopAsync(50, default)).ReturnsAsync(
+            (IReadOnlyList<(string Username, long Points)>)new[]
+            {
+                ("viewer1", 1000L), ("viewer2", 900L),
+            });
+
+        var state = State();
+        state.Open("Test");
+        state.AddUser("@viewer1"); // stored with @ — must be stripped before comparison
+
+        var history = History();
+        await Draw(state, history, seMock.Object).ExecuteAsync(Ctx("mod"));
+
+        var session = history.GetRecent(1)[0];
+        // viewer1 is in the leaderboard and joined — must be the Top10 winner
+        Assert.Equal("viewer1", session.Top10Winner);
     }
 }

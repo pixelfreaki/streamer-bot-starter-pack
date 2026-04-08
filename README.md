@@ -56,7 +56,7 @@ Require a StreamElements account. See [StreamElements setup](#streamelements-set
 | `!top` | Show the top 5 on the leaderboard | Everyone |
 | `!top10` | Show the full top 10 leaderboard | Everyone |
 
-There is also a `chatactivitypoints` event action (no command trigger) that awards points when a user sends a chat message. You must add the **Twitch Chat Message** trigger manually in Streamer.bot with a 30-second user cooldown.
+There is also a `chatactivitypoints` event action that awards points when a user sends a chat message. The import includes a built-in 30-second cooldown timer — no manual trigger setup needed.
 
 ### Raffle bot
 

@@ -27,6 +27,6 @@ public class InMemoryRaffleState : IRaffleState
     public bool AddUser(string username)
     {
         if (!_isOpen) return false;
-        return _joined.Add(username);
+        return _joined.Add(username.TrimStart('@'));
     }
 }

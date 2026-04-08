@@ -57,7 +57,7 @@ Use this as a lookup when building new actions in `generate_import.py`.
 |---|---|---|---|
 | `99999` | Execute Code (Inline C#) | `byteCode` (base64 UTF-8), `references` (dll paths), `saveResultToVariable`, `saveToVariable`, `precompile`, `delayStart` | `saveResultToVariable: true` + `saveToVariable: "varName"` stores the `bool` return as `"True"`/`"False"` in `%varName%` |
 
-**Typical references:**
+**Standard references (include all three in every action):**
 ```json
 [
   "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\mscorlib.dll",
@@ -70,7 +70,9 @@ Use this as a lookup when building new actions in `generate_import.py`.
 |---|---|
 | `mscorlib.dll` | Always |
 | `System.dll` | `System.Net.WebClient`, `HttpRequestHeader` |
-| `System.Core.dll` | `HashSet<T>`, `LINQ` (`Where`, `Take`, `Select`) |
+| `System.Core.dll` | `HashSet<T>`, LINQ (`Where`, `Take`, `Select`) |
+
+> Always include all three. Missing `System.Core.dll` causes a silent compile failure — Streamer.bot will accept the import but the action produces no output.
 
 ### HTTP / URL
 

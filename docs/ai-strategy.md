@@ -1,130 +1,71 @@
 # AI Strategy
 
-This project uses a **multi-layer AI architecture** designed for reliability, performance, and clear separation of responsibilities.
-
-## Overview
-
-There are three distinct layers:
-
-| Layer | Purpose | Technology |
-|------|--------|-----------|
-| 🧠 AI_Licia | Persona-driven interactions | Python + AI |
-| ⚙️ OpenAI | Utility AI (translation, rewriting, etc.) | OpenAI API |
-| 🧱 Local | Deterministic fallback | C# / config |
+This project uses a layered AI architecture designed for reliability and clear separation of concerns. Every command must work without AI — AI enhances responses, never replaces the fallback.
 
 ---
 
+## Layers
 
-### Responsibilities
-
-- AI_Licia → persona, tone, character-driven responses
-- Starter Pack → command system, orchestration, fallback logic
-
-### Important
-
-- AI_Licia is NOT required for the starter pack to function
-- Commands must always have a local fallback
-- Integration should follow the rules defined in this document
----
-## Core Principle
-
-> Every command must work **without AI**.
-
-AI enhances responses — it should never be required for core functionality.
+| Layer | Technology | Purpose |
+|---|---|---|
+| Local | C# / config | Deterministic fallback — always runs |
+| OpenAI | OpenAI API | Utility AI (translation, rewrite, enhance) |
+| AI_Licia | AI_Licia API | Persona-driven responses (character tone) |
 
 ---
 
-## 🧠 AI_Licia (Persona Layer)
+## Local Layer
 
-AI_Licia is responsible for **character-driven interactions**.
+The baseline. Every command implements this.
 
-Use AI_Licia when:
-- The response must follow a persona
-- Tone and personality matter
-- The interaction is immersive or roleplay-driven
+- Responses are deterministic and fast
+- Loaded from `locales/{locale}.json` at startup
+- No external calls, no latency
 
-### Examples
-
-- `!oracle`
-- `!judge`
-- `!omen`
-- `!tarot`
-- `!curse`
-- `!hex`
-
-### Rules
-
-- Always preserve persona identity
-- Never return generic chatbot responses
-- Responses must feel authored by a character
-- Personality is more important than precision
+**Examples:** `!flipcoin`, `!fortune`, `!russianroulette`, base `!8ball` / `!joke` pool
 
 ---
 
-## ⚙️ OpenAI (Utility Layer)
+## OpenAI Layer
 
-OpenAI is used for **non-persona utility tasks**.
+Used for utility tasks where tone and persona are not important.
 
-Use OpenAI when:
-- You need translation
-- You need paraphrasing or rewriting
-- You want to enhance a base response
-- The command is not tied to a persona
+- Enhances a base local response
+- Always wrapped in try/catch — failure falls back to local
+- Must not apply persona tone
 
-### Examples
+**Used by:** `!8ball` (enhance answer), `!joke` (generate topic joke), `!translate`
 
-- Translating dynamic text
-- Rewriting bot responses
-- Enhancing `!8ball` responses
-- Formatting user-generated input
+**Setup:** add `openai_api_key` as a persisted global variable in Streamer.bot (see README).
 
-### Rules
+### Flow
 
-- Do NOT apply persona tone
-- Keep responses neutral unless specified
-- Use OpenAI as an enhancement, not a dependency
+```
+1. Pick local base response
+2. Call OpenAI to enhance it
+3. If OpenAI fails → return local response unchanged
+```
 
 ---
 
-## 🧱 Local Layer (Fallback)
+## AI_Licia Layer
 
-The local layer guarantees reliability.
+Used for persona-driven interactions where character identity matters more than precision.
 
-Use local logic when:
-- The command must always work
-- The response is deterministic
-- Low latency is important
+- AI_Licia sends her response directly to Twitch chat — the bot just triggers her
+- Local fallback is shown in the runner; in Streamer.bot, AI_Licia handles the reply
+- Do not mix AI_Licia logic into utility commands
 
-### Examples
+**Used by:** `!oracle`, `!horoscope`, `!curse`, `!omen`, `!tarot`, `!judge`, `!hex`
 
-- `!flipcoin`
-- Base `!8ball` responses
-- Static command messages
-- Predefined text responses
+**Setup:** add `ai_licia_key` as a persisted global variable in Streamer.bot (see README).
 
 ---
 
-## 🔁 Fallback Strategy
+## Rules
 
-All commands using OpenAI must implement fallback behavior.
-
-### Standard Flow
-
-1. Generate a local/base response
-2. Attempt OpenAI enhancement
-3. If OpenAI fails → return local response
-
-### Example (`!8ball`)
-
-```csharp
-string baseAnswer = GetRandomEightBallResponse();
-
-try
-{
-    string enhanced = CallOpenAI(baseAnswer);
-    return enhanced;
-}
-catch
-{
-    return baseAnswer;
-}
+- `Core` must not depend on OpenAI or AI_Licia
+- `Commands` depend only on `IAiProvider` — never on concrete implementations
+- AI implementations live in `StarterPack.AI.OpenAI` and `StarterPack.AI.AiLicia`
+- Do not mix persona tone into utility commands
+- Do not mix utility logic into persona commands
