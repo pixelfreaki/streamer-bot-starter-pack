@@ -90,6 +90,17 @@ Use this as a lookup when building new actions in `generate_import.py`.
 | `15001` | Timeout User | — | |
 | `20` | Wait / Delay | `waitTime` (ms) | |
 
+### OBS Studio
+
+All OBS sub-actions require a `connectionId` (the UUID of your configured OBS WebSocket connection in Streamer.bot).
+
+| Type | Name | Key Fields | Notes |
+|---|---|---|---|
+| `43` | Start Recording | `connectionId` | Starts OBS recording |
+| `321` | Set Recording State | `connectionId`, `state` (2 = stop) | Controls recording state |
+| `328` | Stop Recording | `connectionId` | Stops OBS recording |
+| `329` | Add Chapter Marker | `connectionId`, `chapterName` | Adds a chapter marker; supports `%variable%` substitution |
+
 ### Kick-Specific
 
 | Type | Name | Key Fields |
