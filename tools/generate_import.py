@@ -3644,6 +3644,7 @@ public class CPHInline
             using (var client = new WebClient())
             {{
                 client.Headers[HttpRequestHeader.Authorization] = "Bearer " + seJwt;
+                client.Headers[HttpRequestHeader.ContentType] = "application/json";
                 byte[] resp = client.UploadData(url, "PUT", new byte[0]);
                 CPH.LogInfo("[chatactivity] response=" + System.Text.Encoding.UTF8.GetString(resp));
             }}
