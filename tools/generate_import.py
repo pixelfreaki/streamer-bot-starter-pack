@@ -3790,10 +3790,11 @@ def build_raffle_action(name, group, queue_id, code, result_var, not_available_m
     return action_id, command_id, action
 
 
-def build_chat_activity_action(name, group, queue_id, code):
+def build_chat_activity_action(name, group, queue_id, code, trigger_id):
     """
     Builds the Chat Activity Points event action.
 
+    Includes a type-133 Twitch Chat Message trigger (stable UUID from config).
     30-second per-user cooldown is handled in C# via CPH global vars.
     excludeFromHistory = True to avoid flooding the action history log.
     concurrent = True to handle simultaneous chat messages correctly.
@@ -3807,7 +3808,14 @@ def build_chat_activity_action(name, group, queue_id, code):
         "excludeFromHistory": True, "excludeFromPending": False,
         "name": name, "group": group,
         "alwaysRun": False, "randomAction": False, "concurrent": True,
-        "triggers": [],
+        "triggers": [
+            {
+                "id": trigger_id,
+                "type": 133,
+                "enabled": True,
+                "exclusions": [],
+            }
+        ],
         "subActions": [
             {"value": "Code", "color": "", "id": str(uuid.uuid4()),
              "weight": 0.0, "type": 1009, "parentId": None, "enabled": True, "index": 0},
@@ -4421,7 +4429,7 @@ def main():
                            "WeirdChamp", "BASED", "OMEGADANCE", "peepoLeave", "peepoArrive"]),
     )
     action_id, action = build_chat_activity_action(
-        "chatactivitypoints", cmd["group"], queue_id, code
+        "chatactivitypoints", cmd["group"], queue_id, code, cmd["trigger_id"]
     )
     print(f"[chatactivitypoints] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
     _write_export(out_dir, "chatactivitypoints", queue_id, queue_def, action, command=None, commands_config=commands_config)
@@ -4527,6 +4535,11 @@ def main():
                            mod_only=cmd.get("mod_only", False))
     print(f"[showPreviousRaffle] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
     _write_export(out_dir, "showPreviousRaffle", queue_id, queue_def, action, command, commands_config)
+
+    # \u2500\u2500 notifications \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    print()
+    print("[notifications] generating 36 notification actions...")
+    build_notifications(out_dir, locale_data, commands_config, queues_config)
 
     print()
     print("To import:")
@@ -4561,6 +4574,390 @@ def main():
     print("  Falls back to local responses if the key is missing or on any error.")
 
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ── notifications ──────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_REFS = [
+    "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\mscorlib.dll",
+    "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.dll",
+    "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.Core.dll",
+]
+
+_TIER_CS = """ + 'using System;\nusing System.Globalization;\n\npublic class CPHInline\n{\n    public bool Execute()\n    {\n        CPH.TryGetArg("tier", out string tier);\n        CPH.SetArgument("tierToTitleCase",\n            System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(tier.ToLower()));\n        return true;\n    }\n}' + r"""
+_POLL_RESULTS_TWITCH_CS_TEMPLATE = """ + 'using System;\n\npublic class CPHInline\n{\n    public bool Execute()\n    {\n        CPH.TryGetArg("poll.winningChoice.title", out string winningVote);\n        CPH.TryGetArg("poll.winningChoice.totalVotes", out int winningTotal);\n        CPH.TryGetArg("poll.votes", out int total);\n\n        double perc = total == 0 ? 0.0 : Math.Round((double)winningTotal / total * 100, 1);\n\n        if (total > 0)\n        {\n            CPH.SetArgument("winningPercentage", perc);\n            return true;\n        }\n        else\n        {\n            CPH.TwitchAnnounce("{poll_no_votes}", false, "purple");\n            return false;\n        }\n    }\n}' + r"""
+_POLL_RESULTS_KICK_CS_TEMPLATE   = """ + 'using System;\n\npublic class CPHInline\n{\n    public bool Execute()\n    {\n        CPH.TryGetArg("poll.winningChoice.title", out string winningVote);\n        CPH.TryGetArg("poll.winningChoice.totalVotes", out int winningTotal);\n        CPH.TryGetArg("poll.votes", out int total);\n\n        double perc = total == 0 ? 0.0 : Math.Round((double)winningTotal / total * 100, 1);\n\n        if (total > 0)\n        {\n            CPH.SetArgument("winningPercentage", perc);\n            return true;\n        }\n        else\n        {\n            CPH.SendKickMessage("{poll_no_votes}");\n            return false;\n        }\n    }\n}' + r"""
+_HYPE_TRAIN_END_CS               = """ + 'using System;\n\npublic class CPHInline\n{\n    public bool Execute()\n    {\n        CPH.TryGetArg("percent", out string percent);\n        CPH.TryGetArg("percentDecimal", out decimal percentDecimal);\n        CPH.SetArgument("progressBar", LoadingBar(percentDecimal) + " " + percent);\n        return true;\n    }\n\n    public string LoadingBar(decimal value, int barLength = 10)\n    {\n        int solid = (int)Math.Round(value * barLength);\n        string bar = "";\n        for (int i = 0; i < barLength; i++)\n            bar += (i < solid) ? "\\u25a0" : "\\u25a1";\n        return bar;\n    }\n}' + r"""
+_KICK_MASS_GIFTED_CS             = """ + 'using System;\n\npublic class CPHInline\n{\n    public bool Execute()\n    {\n        int highestIndex = -1;\n        foreach (var kvp in args)\n        {\n            string key = kvp.Key;\n            if (key.StartsWith("recipient.") && key.EndsWith(".userId"))\n            {\n                string[] parts = key.Split(\'.\');\n                int index;\n                if (parts.Length > 1 && int.TryParse(parts[1], out index))\n                    if (index > highestIndex) highestIndex = index;\n            }\n        }\n        CPH.SetArgument("totalSubs", highestIndex + 1);\n        return true;\n    }\n}' + r"""
+_KICK_PREDICTION_RESULTS_CS      = """ + 'using System;\n\npublic class CPHInline\n{\n    public bool Execute()\n    {\n        int highestVotes = -1;\n        string winningTitle = "";\n        int winningUsers = 0;\n\n        for (int i = 0; ; i++)\n        {\n            string titleKey = "predictionOutcome" + i + "Title";\n            string totalKey = "predictionOutcome" + i + "TotalVoteAmount";\n            string countKey = "predictionOutcome" + i + "VoteCount";\n\n            if (!args.ContainsKey(titleKey) || !args.ContainsKey(totalKey) || !args.ContainsKey(countKey))\n                break;\n\n            CPH.TryGetArg(totalKey, out int totalVotes);\n            CPH.TryGetArg(countKey, out int voteCount);\n\n            if (totalVotes > highestVotes)\n            {\n                highestVotes = totalVotes;\n                CPH.TryGetArg(titleKey, out winningTitle);\n                winningUsers = voteCount;\n            }\n        }\n\n        CPH.SetArgument("predictionWinningOutcomeTitle", winningTitle);\n        CPH.SetArgument("predictionWinningOutcomeUsers", winningUsers);\n        return true;\n    }\n}' + r"""
+
+
+def _make_trigger(ttype, **extra):
+    t = {"id": str(uuid.uuid4()), "type": ttype, "enabled": True, "exclusions": []}
+    t.update(extra)
+    return t
+
+
+def _cs_subaction(code, idx=0, parent_id=None):
+    return {
+        "name": "", "description": "",
+        "references": _REFS,
+        "byteCode": base64.b64encode(code.encode("utf-8")).decode("utf-8"),
+        "precompile": False, "delayStart": False,
+        "saveResultToVariable": False, "saveToVariable": "",
+        "id": str(uuid.uuid4()), "weight": 0.0, "type": 99999,
+        "parentId": parent_id, "enabled": True, "index": idx,
+    }
+
+
+def _twitch_msg(text, color=4, idx=0, parent_id=None):
+    return {"text": text, "color": color, "useBot": True, "fallback": True,
+            "id": str(uuid.uuid4()), "weight": 0.0, "type": 23,
+            "parentId": parent_id, "enabled": True, "index": idx}
+
+
+def _kick_msg(text, idx=0, parent_id=None):
+    return {"text": text, "useBot": True, "fallback": True,
+            "id": str(uuid.uuid4()), "weight": 0.0, "type": 35001,
+            "parentId": parent_id, "enabled": True, "index": idx}
+
+
+def _yt_msg(text, idx=0, parent_id=None):
+    return {"text": text, "useBot": True, "fallback": True, "broadcast": 0,
+            "id": str(uuid.uuid4()), "weight": 0.0, "type": 4001,
+            "parentId": parent_id, "enabled": True, "index": idx}
+
+
+def _label(text, idx=0):
+    return {"value": text, "color": "", "id": str(uuid.uuid4()),
+            "weight": 0.0, "type": 1009, "parentId": None, "enabled": True, "index": idx}
+
+
+def _if_block(input_var, op, value, then_subs, else_subs=None, auto_type=True, idx=0):
+    if_id    = str(uuid.uuid4())
+    then_id  = str(uuid.uuid4())
+    else_id  = str(uuid.uuid4())
+    then_branch = {
+        "random": False,
+        "subActions": [dict(s, parentId=then_id, index=i) for i, s in enumerate(then_subs)],
+        "id": then_id, "weight": 0.0, "type": 99901,
+        "parentId": if_id, "enabled": True, "index": 0,
+    }
+    branches = [then_branch]
+    if else_subs is not None:
+        else_branch = {
+            "random": False,
+            "subActions": [dict(s, parentId=else_id, index=i) for i, s in enumerate(else_subs)],
+            "id": else_id, "weight": 0.0, "type": 99902,
+            "parentId": if_id, "enabled": True, "index": 1,
+        }
+        branches.append(else_branch)
+    return {
+        "input": input_var, "operation": op, "value": value,
+        "autoType": auto_type, "subActions": branches,
+        "id": if_id, "weight": 0.0, "type": 120,
+        "parentId": None, "enabled": True, "index": idx,
+    }
+
+
+def _build_notification_action(name, group, queue_id, triggers, sub_actions):
+    return {
+        "id": str(uuid.uuid4()), "queue": queue_id, "enabled": True,
+        "excludeFromHistory": False, "excludeFromPending": False,
+        "name": name, "group": group,
+        "alwaysRun": False, "randomAction": False, "concurrent": False,
+        "triggers": triggers,
+        "subActions": [dict(s, index=i) for i, s in enumerate(sub_actions)],
+        "collapsedGroups": [],
+    }
+
+
+def build_notifications(out_dir, locale_data, commands_config, queues_config):
+    notif  = locale_data.get("notifications", {})
+    tw     = notif.get("twitch", {})
+    yt     = notif.get("youtube", {})
+    kick   = notif.get("kick", {})
+
+    # resolve queues
+    fun_q  = queues_config["fun"]
+    info_q = queues_config["info"]
+
+    group = "Notifications"
+
+    # ── helper: write one notification export ──────────────────────────────────
+    def _write(key, action):
+        cmd_def = commands_config.get(key, {})
+        if "action_id" in cmd_def:
+            old = action["id"]
+            new = cmd_def["action_id"]
+            action = json.loads(json.dumps(action).replace(old, new))
+        queue_id = action["queue"]
+        # find queue def from queues_config by id
+        q_def = next((v for v in queues_config.values() if v["id"] == queue_id), fun_q)
+        _write_export(out_dir, key, queue_id, q_def, action, command=None, commands_config=None)
+        print(f"[{key}] written")
+
+    poll_no_votes_tw   = tw.get("pollNoVotes", "NOBODY VOTED")
+    poll_no_votes_kick = kick.get("pollNoVotes", "NOBODY VOTED")
+
+    poll_cs_tw   = _POLL_RESULTS_TWITCH_CS_TEMPLATE.replace("{poll_no_votes}", poll_no_votes_tw)
+    poll_cs_kick = _POLL_RESULTS_KICK_CS_TEMPLATE.replace("{poll_no_votes}", poll_no_votes_kick)
+
+    # ── Twitch Notification • Title Changed (trigger 118) ──────────────────────
+    _write("notif_twitch_title_changed", _build_notification_action(
+        "Twitch Notification \u2022 Title Changed", group, fun_q["id"],
+        [_make_trigger(118, gameOnly=False, gameId=None, gameName=None)],
+        [_label("Code"),
+         _if_block("%statusUpdate%", 0, "True", [_twitch_msg(tw["titleChanged"])], auto_type=False)],
+    ))
+
+    # ── Twitch Notification • Game Changed (trigger 118) ───────────────────────
+    _write("notif_twitch_game_changed", _build_notification_action(
+        "Twitch Notification \u2022 Game Changed", group, fun_q["id"],
+        [_make_trigger(118, gameOnly=False, gameId=None, gameName=None)],
+        [_label("Code"),
+         _if_block("%gameUpdate%", 0, "True", [_twitch_msg(tw["gameChanged"])], auto_type=False)],
+    ))
+
+    # ── Twitch Notification • Poll Start (trigger 125) ─────────────────────────
+    _write("notif_twitch_poll_start", _build_notification_action(
+        "Twitch Notification \u2022 Poll Start", group, fun_q["id"],
+        [_make_trigger(125)],
+        [_label("Code"), _twitch_msg(tw["pollStart"])],
+    ))
+
+    # ── Twitch Notification • Poll Results (trigger 127) ───────────────────────
+    _write("notif_twitch_poll_results", _build_notification_action(
+        "Twitch Notification \u2022 Poll Results", group, fun_q["id"],
+        [_make_trigger(127)],
+        [_label("Code"),
+         _cs_subaction(poll_cs_tw),
+         _if_block("%pollSuccess%", 0, "True", [_twitch_msg(tw["pollResults"])], auto_type=False)],
+    ))
+
+    # ── Twitch Notification • Prediction Start (trigger 128) ───────────────────
+    _write("notif_twitch_prediction_start", _build_notification_action(
+        "Twitch Notification \u2022 Prediction Start", group, fun_q["id"],
+        [_make_trigger(128)],
+        [_label("Code"), _twitch_msg(tw["predictionStart"])],
+    ))
+
+    # ── Twitch Notification • Prediction Locked (trigger 132) ──────────────────
+    _write("notif_twitch_prediction_locked", _build_notification_action(
+        "Twitch Notification \u2022 Prediction Locked", group, fun_q["id"],
+        [_make_trigger(132)],
+        [_label("Code"), _twitch_msg(tw["predictionLocked"])],
+    ))
+
+    # ── Twitch Notification • Prediction Results (trigger 130) ─────────────────
+    _write("notif_twitch_prediction_results", _build_notification_action(
+        "Twitch Notification \u2022 Prediction Results", group, fun_q["id"],
+        [_make_trigger(130)],
+        [_label("Code"), _twitch_msg(tw["predictionResults"])],
+    ))
+
+    # ── Twitch Notification • Ad Run (trigger 139) ─────────────────────────────
+    _write("notif_twitch_ad_run", _build_notification_action(
+        "Twitch Notification \u2022 Ad Run", group, info_q["id"],
+        [_make_trigger(139)],
+        [_label("Code"), _twitch_msg(tw["adRun"])],
+    ))
+
+    # ── Twitch Notification • Upcoming Ads (trigger 186, minutes=[1]) ──────────
+    _write("notif_twitch_upcoming_ads", _build_notification_action(
+        "Twitch Notification \u2022 Upcoming Ads", group, info_q["id"],
+        [_make_trigger(186, minutes=[1])],
+        [_label("Code"), _twitch_msg(tw["upcomingAds"])],
+    ))
+
+    # ── Twitch Notification • Hype Train Start (trigger 108) ───────────────────
+    _write("notif_twitch_hype_train_start", _build_notification_action(
+        "Twitch Notification \u2022 Hype Train Start", group, fun_q["id"],
+        [_make_trigger(108)],
+        [_label("Code"), _twitch_msg(tw["hypeTrainStart"])],
+    ))
+
+    # ── Twitch Notification • Hype Train Level Up (trigger 110) ────────────────
+    _write("notif_twitch_hype_train_level_up", _build_notification_action(
+        "Twitch Notification \u2022 Hype Train Level Up", group, fun_q["id"],
+        [_make_trigger(110, min=-1, max=-1)],
+        [_label("Code"), _twitch_msg(tw["hypeTrainLevelUp"])],
+    ))
+
+    # ── Twitch Notification • Hype Train End (trigger 111) ─────────────────────
+    _write("notif_twitch_hype_train_end", _build_notification_action(
+        "Twitch Notification \u2022 Hype Train End", group, fun_q["id"],
+        [_make_trigger(111)],
+        [_label("Code"), _cs_subaction(_HYPE_TRAIN_END_CS), _twitch_msg(tw["hypeTrainEnd"])],
+    ))
+
+    # ── Twitch Notification • Raid (trigger 107) ───────────────────────────────
+    _write("notif_twitch_raid", _build_notification_action(
+        "Twitch Notification \u2022 Raid", group, fun_q["id"],
+        [_make_trigger(107, min=-1, max=-1)],
+        [_label("Code"), _twitch_msg(tw["raid"])],
+    ))
+
+    # ── Twitch Notification • New Subscriber (trigger 103) ─────────────────────
+    _write("notif_twitch_new_subscriber", _build_notification_action(
+        "Twitch Notification \u2022 New Subscriber", group, fun_q["id"],
+        [_make_trigger(103, tiers=16)],
+        [_label("Code"), _cs_subaction(_TIER_CS), _twitch_msg(tw["newSubscriber"])],
+    ))
+
+    # ── Twitch Notification • New Resubscriber (trigger 104) ───────────────────
+    _write("notif_twitch_new_resubscriber", _build_notification_action(
+        "Twitch Notification \u2022 New Resubscriber", group, fun_q["id"],
+        [_make_trigger(104, tiers=16, min=-1, max=-1)],
+        [_label("Code"), _cs_subaction(_TIER_CS), _twitch_msg(tw["newResubscriber"])],
+    ))
+
+    # ── Twitch Notification • New Gifted Subscription (trigger 105) ────────────
+    # Only show total-gifted line when %fromGiftBomb% != True AND %totalSubsGifted% > 0
+    _write("notif_twitch_new_gifted_sub", _build_notification_action(
+        "Twitch Notification \u2022 New Gifted Subscription", group, fun_q["id"],
+        [_make_trigger(105, tiers=16, min=-1, max=-1, subType=0, monthsGifted=15)],
+        [_label("Code"),
+         _cs_subaction(_TIER_CS),
+         _if_block("%fromGiftBomb%", 0, "False",
+             [_if_block("%totalSubsGifted%", 5, "0",
+                 [_twitch_msg(tw["newGiftedSub"])],
+                 [_twitch_msg(tw["newGiftedSubNoTotal"])],
+                 auto_type=True)],
+             auto_type=False)],
+    ))
+
+    # ── Twitch Notification • Gift Bomb (trigger 106) ──────────────────────────
+    _write("notif_twitch_gift_bomb", _build_notification_action(
+        "Twitch Notification \u2022 Gift Bomb", group, fun_q["id"],
+        [_make_trigger(106, tiers=16, min=-1, max=-1, subType=0)],
+        [_label("Code"), _cs_subaction(_TIER_CS), _twitch_msg(tw["giftBomb"])],
+    ))
+
+    # ── YouTube Notification • Super Chat (trigger 4006) ───────────────────────
+    _write("notif_yt_super_chat", _build_notification_action(
+        "YouTube Notification \u2022 Super Chat", group, fun_q["id"],
+        [_make_trigger(4006, min=-1.0, max=-1.0)],
+        [_label("Code"), _yt_msg(yt["superChat"])],
+    ))
+
+    # ── YouTube Notification • Super Sticker (trigger 4007) ────────────────────
+    _write("notif_yt_super_sticker", _build_notification_action(
+        "YouTube Notification \u2022 Super Sticker", group, fun_q["id"],
+        [_make_trigger(4007, min=-1.0, max=-1.0)],
+        [_label("Code"), _yt_msg(yt["superSticker"])],
+    ))
+
+    # ── YouTube Notification • New Member (trigger 4008) ───────────────────────
+    _write("notif_yt_new_member", _build_notification_action(
+        "YouTube Notification \u2022 New Member", group, fun_q["id"],
+        [_make_trigger(4008)],
+        [_label("Code"), _yt_msg(yt["newMember"])],
+    ))
+
+    # ── YouTube Notification • New Gifted Membership (trigger 4015) ────────────
+    _write("notif_yt_new_gifted_membership", _build_notification_action(
+        "YouTube Notification \u2022 New Gifted Membership", group, fun_q["id"],
+        [_make_trigger(4015)],
+        [_label("Code"), _yt_msg(yt["newGiftedMembership"])],
+    ))
+
+    # ── Kick Notification • New Follow (trigger 35011) ─────────────────────────
+    _write("notif_kick_new_follow", _build_notification_action(
+        "Kick Notification \u2022 New Follow", group, fun_q["id"],
+        [_make_trigger(35011)],
+        [_label("Code"), _kick_msg(kick["newFollow"])],
+    ))
+
+    # ── Kick Notification • New Subscriber (trigger 35014) ─────────────────────
+    _write("notif_kick_new_subscriber", _build_notification_action(
+        "Kick Notification \u2022 New Subscriber", group, fun_q["id"],
+        [_make_trigger(35014)],
+        [_label("Code"), _kick_msg(kick["newSubscriber"])],
+    ))
+
+    # ── Kick Notification • New Resubscriber (trigger 35015) ───────────────────
+    _write("notif_kick_new_resubscriber", _build_notification_action(
+        "Kick Notification \u2022 New Resubscriber", group, fun_q["id"],
+        [_make_trigger(35015)],
+        [_label("Code"), _kick_msg(kick["newResubscriber"])],
+    ))
+
+    # ── Kick Notification • New Gifted Subscription (trigger 35016) ────────────
+    _write("notif_kick_new_gifted_sub", _build_notification_action(
+        "Kick Notification \u2022 New Gifted Subscription", group, fun_q["id"],
+        [_make_trigger(35016)],
+        [_label("Code"), _kick_msg(kick["newGiftedSub"])],
+    ))
+
+    # ── Kick Notification • Mass Gifted Subscriptions (trigger 35017) ──────────
+    _write("notif_kick_mass_gifted_subs", _build_notification_action(
+        "Kick Notification \u2022 Mass Gifted Subscriptions", group, fun_q["id"],
+        [_make_trigger(35017)],
+        [_label("Code"), _cs_subaction(_KICK_MASS_GIFTED_CS), _kick_msg(kick["massGiftedSubs"])],
+    ))
+
+    # ── Kick Notification • Host (trigger 18002 kickIncomingRaid) ──────────────
+    _write("notif_kick_host", _build_notification_action(
+        "Kick Notification \u2022 Host", group, fun_q["id"],
+        [_make_trigger(18002, name="[Kick.bot] Raid", eventName="kickIncomingRaid")],
+        [_label("Code"), _kick_msg(kick["host"])],
+    ))
+
+    # ── Kick Notification • Title Changed (trigger 35020) ──────────────────────
+    _write("notif_kick_title_changed", _build_notification_action(
+        "Kick Notification \u2022 Title Changed", group, fun_q["id"],
+        [_make_trigger(35020, gameOnly=False, gameId=None, gameName=None)],
+        [_label("Code"),
+         _if_block("%titleUpdate%", 0, "True", [_kick_msg(kick["titleChanged"])], auto_type=False)],
+    ))
+
+    # ── Kick Notification • Category Changed (trigger 35020) ───────────────────
+    _write("notif_kick_category_changed", _build_notification_action(
+        "Kick Notification \u2022 Category Changed", group, fun_q["id"],
+        [_make_trigger(35020, gameOnly=False, gameId=None, gameName=None)],
+        [_label("Code"),
+         _if_block("%gameUpdate%", 0, "True", [_kick_msg(kick["categoryChanged"])], auto_type=False)],
+    ))
+
+    # ── Kick Notification • Poll Start (trigger 18002 kickPollCreated) ─────────
+    _write("notif_kick_poll_start", _build_notification_action(
+        "Kick Notification \u2022 Poll Start", group, fun_q["id"],
+        [_make_trigger(18002, name="[Kick.bot] Poll Created", eventName="kickPollCreated")],
+        [_label("Code"), _kick_msg(kick["pollStart"])],
+    ))
+
+    # ── Kick Notification • Poll Results (trigger 18002 kickPollCompleted) ──────
+    _write("notif_kick_poll_results", _build_notification_action(
+        "Kick Notification \u2022 Poll Results", group, fun_q["id"],
+        [_make_trigger(18002, name="[Kick.bot] Poll Completed", eventName="kickPollCompleted")],
+        [_label("Code"),
+         _cs_subaction(poll_cs_kick),
+         _if_block("%pollSuccess%", 0, "True", [_kick_msg(kick["pollResults"])], auto_type=False)],
+    ))
+
+    # ── Kick Notification • Prediction Start (trigger 18002 kickPredictionCreated)
+    _write("notif_kick_prediction_start", _build_notification_action(
+        "Kick Notification \u2022 Prediction Start", group, fun_q["id"],
+        [_make_trigger(18002, name="[Kick.bot] Prediction Created", eventName="kickPredictionCreated")],
+        [_label("Code"), _kick_msg(kick["predictionStart"])],
+    ))
+
+    # ── Kick Notification • Prediction Locked (trigger 18002 kickPredictionLocked)
+    _write("notif_kick_prediction_locked", _build_notification_action(
+        "Kick Notification \u2022 Prediction Locked", group, fun_q["id"],
+        [_make_trigger(18002, name="[Kick.bot] Prediction Locked", eventName="kickPredictionLocked")],
+        [_label("Code"), _kick_msg(kick["predictionLocked"])],
+    ))
+
+    # ── Kick Notification • Prediction Results (trigger 18002 kickPredictionResolved)
+    _write("notif_kick_prediction_results", _build_notification_action(
+        "Kick Notification \u2022 Prediction Results", group, fun_q["id"],
+        [_make_trigger(18002, name="[Kick.bot] Prediction Resolved", eventName="kickPredictionResolved")],
+        [_label("Code"), _cs_subaction(_KICK_PREDICTION_RESULTS_CS), _kick_msg(kick["predictionResults"])],
+    ))
+
 def _write_export(out_dir, name, queue_id, queue_def, action, command=None, commands_config=None, timers=None):
     # Apply stable action/command IDs from config so re-imports don't create duplicates.
     if commands_config and name in commands_config:

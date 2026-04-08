@@ -107,8 +107,49 @@ Use this as a lookup when building new actions in `generate_import.py`.
 
 | Type | Name | Key Fields | Notes |
 |---|---|---|---|
-| `401` | Command Trigger | `commandId` — links an action to a `!command` | Paired with a `commands[]` entry in the export |
-| `701` | Timer Trigger | `timerId` — links an action to a named timer | Paired with a `timers[]` entry in the export |
+| `401` | Command Trigger | `commandId` | Links action to a `!command`. Paired with `commands[]` entry. |
+| `701` | Timer Trigger | `timerId` | Links action to a named timer. Paired with `timers[]` entry. |
+| `133` | Twitch Chat Message | — | Fires on every chat message. Passes `user`, `message`, `emoteCount`. Add manually after import. |
+| `101` | Twitch Follow | — | |
+| `102` | Twitch Cheer | `min`, `max` (-1 = any) | |
+| `103` | Twitch New Subscriber | `tiers` (16 = all tiers) | |
+| `104` | Twitch Resubscriber | `tiers`, `min`, `max` | |
+| `105` | Twitch Gifted Subscription | `tiers`, `min`, `max`, `subType`, `monthsGifted` | |
+| `106` | Twitch Gift Bomb | `tiers`, `min`, `max`, `subType` | |
+| `107` | Twitch Raid | `min`, `max` (-1 = any) | Passes `%user%`, `%viewers%` |
+| `108` | Twitch Hype Train Start | — | |
+| `110` | Twitch Hype Train Level Up | `min`, `max` | Passes `%level%` |
+| `111` | Twitch Hype Train End | — | Passes `%level%`, `%percent%`, `%percentDecimal%` |
+| `118` | Twitch Stream Update | `gameOnly`, `gameId`, `gameName` | Passes `%statusUpdate%`, `%gameUpdate%`, `%status%`, `%gameName%` |
+| `125` | Twitch Poll Start | — | Passes `%poll.Title%` |
+| `127` | Twitch Poll Results | — | Passes `%poll.winningChoice.title%`, `%poll.winningChoice.totalVotes%`, `%poll.votes%` |
+| `128` | Twitch Prediction Start | — | Passes `%prediction.Title%` |
+| `130` | Twitch Prediction Results | — | Passes `%prediction.winningOutcome.title%`, `%prediction.winningOutcome.users%` |
+| `132` | Twitch Prediction Locked | — | |
+| `139` | Twitch Ad Run | — | Passes `%adLength%` |
+| `186` | Twitch Upcoming Ads | `minutes` (array, e.g. `[1]`) | Passes `%minutes%`, `%broadcastUser%` |
+| `4006` | YouTube Super Chat | `min`, `max` | Passes `%user%`, `%amount%`, `%message%` |
+| `4007` | YouTube Super Sticker | `min`, `max` | Passes `%user%`, `%amount%` |
+| `4008` | YouTube New Member | — | Passes `%user%`, `%levelName%` |
+| `4015` | YouTube New Gifted Membership | — | Passes `%gifterUser%`, `%user%`, `%tier%` |
+| `35011` | Kick New Follow | — | |
+| `35014` | Kick New Subscriber | — | |
+| `35015` | Kick New Resubscriber | — | Passes `%monthsSubscribed%` |
+| `35016` | Kick New Gifted Subscription | — | Passes `%user%`, `%recipient.userName%` |
+| `35017` | Kick Mass Gifted Subscriptions | — | Recipients in args as `recipient.{n}.userId` |
+| `35020` | Kick Stream Update | `gameOnly`, `gameId`, `gameName` | Passes `%titleUpdate%`, `%gameUpdate%`, `%status%`, `%categoryName%` |
+| `18002` | Kick Custom Event (Kick.bot) | `name`, `eventName` | Used for Kick polls/predictions/raid. See table below. |
+
+#### Type 18002 — Kick.bot Event Names
+
+| `eventName` | `name` | Event |
+|---|---|---|
+| `kickIncomingRaid` | `[Kick.bot] Raid` | Incoming raid. Passes `%user%`, `%viewers%` |
+| `kickPollCreated` | `[Kick.bot] Poll Created` | Poll started |
+| `kickPollCompleted` | `[Kick.bot] Poll Completed` | Poll ended |
+| `kickPredictionCreated` | `[Kick.bot] Prediction Created` | Prediction started |
+| `kickPredictionLocked` | `[Kick.bot] Prediction Locked` | Prediction locked |
+| `kickPredictionResolved` | `[Kick.bot] Prediction Resolved` | Prediction resolved |
 
 #### Type 701 — Timer Trigger
 

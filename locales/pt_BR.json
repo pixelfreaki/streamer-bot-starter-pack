@@ -600,5 +600,50 @@
         "noHistory": "Nenhum sorteio anterior encontrado."
       }
     }
+  },
+  "notifications": {
+    "twitch": {
+      "titleChanged": "Título alterado para \"%status%\"",
+      "gameChanged": "Jogo alterado para \"%gameName%\"",
+      "pollStart": "NOVA ENQUETE! • %poll.Title%",
+      "pollResults": "OS RESULTADOS CHEGARAM! • %poll.winningChoice.title% (%winningPercentage%%) ThunBeast",
+      "pollNoVotes": "OS RESULTADOS CHEGARAM E... NINGUÉM VOTOU KEKW",
+      "predictionStart": "NOVA PREVISÃO! • %prediction.Title%",
+      "predictionLocked": "PREVISÕES... ENCERRADAS! Aguardem os resultados...",
+      "predictionResults": "E o vencedor é... %prediction.winningOutcome.title% (%prediction.winningOutcome.users% vencedores) OneHand",
+      "adRun": "Intervalo comercial de %adLength%s começando. Obrigado por ficar e apoiar o canal! ThankEgg",
+      "upcomingAds": "Intervalo em %minutes%min. Assine para assistir sem anúncios! https://www.twitch.tv/subs/%broadcastUser%",
+      "hypeTrainStart": "🚂 O Hype Train partiu! Tchuu tchuu! 🚂",
+      "hypeTrainLevelUp": "🚂 O Hype Train está a todo vapor! NÍVEL %level%! 🚂",
+      "hypeTrainEnd": "🚂 O Hype Train ACABOU! NÍVEL %level%! %progressBar% 🚂",
+      "raid": "%user% está fazendo raid com %viewers% pessoas!",
+      "newSubscriber": "%user% se inscreveu com %tierToTitleCase% CrreamAwk",
+      "newResubscriber": "%user% re-inscreveu com %tierToTitleCase% (%cumulative% meses) CrreamAwk %message%",
+      "newGiftedSub": "%user% presenteou um sub %tierToTitleCase% para %recipientUser% CrreamAwk Já presenteou %totalSubsGifted% subs no total!",
+      "newGiftedSubNoTotal": "%user% presenteou um sub %tierToTitleCase% para %recipientUser% CrreamAwk",
+      "giftBomb": "%user% presenteou %gifts% subs %tierToTitleCase%. Já presenteou %totalGifts% subs no total!"
+    },
+    "youtube": {
+      "superChat": "%user% enviou um Super Chat (%amount%) 💸 %message%",
+      "superSticker": "%user% enviou um Super Sticker (%amount%)",
+      "newMember": "%user% virou membro (%levelName%)",
+      "newGiftedMembership": "%gifterUser% presenteou uma assinatura para %user% (%tier%)"
+    },
+    "kick": {
+      "newFollow": "%user% seguiu!",
+      "newSubscriber": "%user% se inscreveu [emote:37240:WeirdChamp]",
+      "newResubscriber": "%user% re-inscreveu (%monthsSubscribed% meses) [emote:37240:WeirdChamp]",
+      "newGiftedSub": "%user% presenteou sub para %recipient.userName% [emote:37240:WeirdChamp]",
+      "massGiftedSubs": "%user% presenteou %totalSubs% subs para a comunidade! [emote:37240:WeirdChamp]",
+      "host": "%user% está hospedando com %viewers% pessoas!",
+      "pollStart": "NOVA ENQUETE! • %poll.Title%",
+      "pollResults": "OS RESULTADOS CHEGARAM! • %poll.winningChoice.title% (%winningPercentage%%) [emote:37240:WeirdChamp]",
+      "pollNoVotes": "OS RESULTADOS CHEGARAM E... NINGUÉM VOTOU KEKW",
+      "titleChanged": "Título alterado para \"%status%\"",
+      "categoryChanged": "Categoria alterada para \"%categoryName%\"",
+      "predictionStart": "NOVA PREVISÃO! • %predictionTitle%",
+      "predictionLocked": "PREVISÕES... ENCERRADAS! Aguardem os resultados...",
+      "predictionResults": "E o vencedor é... %predictionWinningOutcomeTitle% (%predictionWinningOutcomeUsers% vencedores) [emote:37240:WeirdChamp]"
+    }
   }
 }
