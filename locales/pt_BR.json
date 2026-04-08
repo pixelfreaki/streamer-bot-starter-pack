@@ -76,11 +76,10 @@
       "noChoice": "⚠️ {user}, escolha primeiro: !flipcoin cara ou !flipcoin coroa"
     },
     "clip": {
-      "success": "🎬 {user} criou um clip! {clipUrl}",
-      "failure": "❌ Não foi possível criar o clip agora. Tente novamente, {user}!",
-      "creating": "/me @%user% está criando um clip...",
-      "notAvailable": "@%user% %command% não está disponível nessa plataforma D:",
-      "replaySaved": "Replay salvo! Verifique sua pasta de Replays do OBS, @%user%!",
+      "success": "⚠️ O Replay Buffer não estava ativo, então usei um clip da Twitch. {clipUrl}",
+      "failure": "⚠️ O Replay Buffer não estava ativo — e o clip da Twitch também falhou. Tente novamente, {user}!",
+      "notAvailable": "⚠️ O Replay Buffer não estava ativo, @%user% %command% não está disponível nessa plataforma D:",
+      "replaySaved": "🎬 Clip local salvo! Obrigado @%user% 💜",
       "cooldown": "@%user% aguarde {secs}s antes de criar outro clip."
     },
     "lurk": {

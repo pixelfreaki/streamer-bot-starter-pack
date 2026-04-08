@@ -501,7 +501,6 @@ def make_clip_action_smart(name, group, queue_id, msgs):
     action_id  = str(uuid.uuid4())
     command_id = str(uuid.uuid4())
 
-    creating_msg    = msgs["creating"]
     success_msg     = msgs["success"].replace("{user}", "@%user%").replace("{clipUrl}", "%createClipUrl%")
     failure_msg     = msgs["failure"].replace("{user}", "@%user%")
     replay_msg      = msgs["replaySaved"]
@@ -561,7 +560,6 @@ public class CPHInline
             }}
         }}
 
-        CPH.SendMessage("{creating_msg}", true);
         bool created = CPH.TwitchCreateClip(false);
         CPH.SetArgument("clipResult", created
             ? "{success_msg}"
