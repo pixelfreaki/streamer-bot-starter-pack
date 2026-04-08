@@ -2820,6 +2820,9 @@ public class CPHInline
 {{
     public bool Execute()
     {{
+        CPH.SetGlobalVar(cooldownKey, DateTime.UtcNow.ToString("O"), false);
+        CPH.LogInfo("[chatactivity] cooldown_stamped user=" + user);
+
         string seJwt     = CPH.GetGlobalVar<string>("se_jwt", true);
         string seChannel = CPH.GetGlobalVar<string>("se_channel", true);
 
@@ -2997,6 +3000,9 @@ public class CPHInline
 {{
     public bool Execute()
     {{
+        CPH.SetGlobalVar(cooldownKey, DateTime.UtcNow.ToString("O"), false);
+        CPH.LogInfo("[chatactivity] cooldown_stamped user=" + user);
+
         string seJwt     = CPH.GetGlobalVar<string>("se_jwt", true);
         string seChannel = CPH.GetGlobalVar<string>("se_channel", true);
 
@@ -3591,10 +3597,35 @@ public class CPHInline
 
         CPH.LogInfo("[chatactivity] user=" + user + " msg=" + message + " emotes=" + emoteCount);
 
+        if (string.IsNullOrEmpty(user))
+        {{
+            CPH.LogInfo("[chatactivity] skip=no_user");
+            return true;
+        }}
+
+        string cooldownKey = "chatpoints_last_" + user.ToLowerInvariant();
+        string lastStr = CPH.GetGlobalVar<string>(cooldownKey, false);
+        if (!string.IsNullOrEmpty(lastStr))
+        {{
+            DateTime last;
+            if (DateTime.TryParse(lastStr, null, System.Globalization.DateTimeStyles.RoundtripKind, out last))
+            {{
+                double elapsed = (DateTime.UtcNow - last).TotalSeconds;
+                if (elapsed < 30)
+                {{
+                    CPH.LogInfo("[chatactivity] skip=cooldown user=" + user + " elapsed=" + (int)elapsed + "s");
+                    return true;
+                }}
+            }}
+        }}
+
         if (message.StartsWith("!"))              {{ CPH.LogInfo("[chatactivity] skip=command");    return true; }}
         if (message.Trim().Length < {min_length}) {{ CPH.LogInfo("[chatactivity] skip=too_short"); return true; }}
         if (Bots.Contains(user))                  {{ CPH.LogInfo("[chatactivity] skip=bot");        return true; }}
         if (IsEmoteOnly(message, emoteCount))     {{ CPH.LogInfo("[chatactivity] skip=emote_only"); return true; }}
+
+        CPH.SetGlobalVar(cooldownKey, DateTime.UtcNow.ToString("O"), false);
+        CPH.LogInfo("[chatactivity] cooldown_stamped user=" + user);
 
         string seJwt     = CPH.GetGlobalVar<string>("se_jwt", true);
         string seChannel = CPH.GetGlobalVar<string>("se_channel", true);
@@ -3760,11 +3791,11 @@ def build_raffle_action(name, group, queue_id, code, result_var, not_available_m
     return action_id, command_id, action
 
 
-def build_chat_activity_action(name, group, queue_id, code, timer_id, trigger_id):
+def build_chat_activity_action(name, group, queue_id, code):
     """
     Builds the Chat Activity Points event action.
 
-    Includes a type-701 Timer trigger (30s cooldown) so no manual setup is needed.
+    30-second per-user cooldown is handled in C# via CPH global vars.
     excludeFromHistory = True to avoid flooding the action history log.
     concurrent = True to handle simultaneous chat messages correctly.
     """
@@ -3777,15 +3808,7 @@ def build_chat_activity_action(name, group, queue_id, code, timer_id, trigger_id
         "excludeFromHistory": True, "excludeFromPending": False,
         "name": name, "group": group,
         "alwaysRun": False, "randomAction": False, "concurrent": True,
-        "triggers": [
-            {
-                "timerId": timer_id,
-                "id": trigger_id,
-                "type": 701,
-                "enabled": True,
-                "exclusions": [],
-            }
-        ],
+        "triggers": [],
         "subActions": [
             {"value": "Code", "color": "", "id": str(uuid.uuid4()),
              "weight": 0.0, "type": 1009, "parentId": None, "enabled": True, "index": 0},
@@ -4399,21 +4422,10 @@ def main():
                            "WeirdChamp", "BASED", "OMEGADANCE", "peepoLeave", "peepoArrive"]),
     )
     action_id, action = build_chat_activity_action(
-        "chatactivitypoints", cmd["group"], queue_id, code, cmd["timer_id"], cmd["trigger_id"]
+        "chatactivitypoints", cmd["group"], queue_id, code
     )
     print(f"[chatactivitypoints] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
-    timer_obj = {
-        "id": cmd["timer_id"],
-        "name": "Twitch Chat Message Cooldown",
-        "enabled": False,
-        "repeat": True,
-        "interval": 30,
-        "randomInterval": False,
-        "upperInterval": 0,
-        "lines": 0,
-        "counter": 0,
-    }
-    _write_export(out_dir, "chatactivitypoints", queue_id, queue_def, action, command=None, commands_config=commands_config, timers=[timer_obj])
+    _write_export(out_dir, "chatactivitypoints", queue_id, queue_def, action, command=None, commands_config=commands_config)
 
     # ── raffle: join ───────────────────────────────────────────────────────────
     raffle_data = locale_data["commands"]["raffle"]
@@ -4530,8 +4542,9 @@ def main():
     print("  se_jwt    = your StreamElements JWT token (from streamelements.com/dashboard/account/security)")
     print("  se_channel = your StreamElements channel ObjectId (decode your JWT -- field 'channel')")
     print()
-    print("  chatactivitypoints — the 30-second timer trigger is embedded in the import.")
-    print("  No manual trigger setup needed.")
+    print("  chatactivitypoints — after importing, add the event trigger manually:")
+    print("  Open the 'chatactivitypoints' action -> Triggers -> Add -> Twitch -> Chat -> Message")
+    print("  The 30-second per-user cooldown is enforced in the C# code (no extra settings needed).")
     print()
     print("Raffle bot (join / openRaffle / closeRaffle / drawRaffle / showPreviousRaffle):")
     print("  No extra configuration required — raffle state is stored in Streamer.bot global variables.")
