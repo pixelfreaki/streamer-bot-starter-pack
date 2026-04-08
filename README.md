@@ -18,7 +18,7 @@ A C#-first command pack for [Streamer.bot](https://streamer.bot). Commands are c
 | `!translate` | Translate a message | Everyone |
 | `!russianroulette` | 1-in-6 chance of dying | Everyone |
 | `!sacrifice` | Sacrifice a user | Everyone |
-| `!clip` | Create a Twitch clip | Everyone |
+| `!clip` | Save OBS replay buffer, or fall back to Twitch clip if replay is not running | Everyone |
 | `!shoutout` | Shout out another streamer | Everyone |
 | `!settitle` | Set stream title | Mod only |
 | `!setgame` | Set stream category | Mod only |
@@ -56,7 +56,7 @@ Require a StreamElements account. See [StreamElements setup](#streamelements-set
 | `!top` | Show the top 5 on the leaderboard | Everyone |
 | `!top10` | Show the full top 10 leaderboard | Everyone |
 
-There is also a `chatactivitypoints` event action that awards points when a user sends a chat message. The import includes a built-in 30-second cooldown timer — no manual trigger setup needed.
+There is also a `chatactivitypoints` event action that awards points when a user sends a chat message. After importing, add its trigger manually: **Triggers → Add → Twitch → Chat → Message**. The 30-second per-user cooldown is enforced in the C# code — no extra settings needed on the trigger.
 
 ### Raffle bot
 
@@ -85,6 +85,44 @@ A full raffle system that integrates with the StreamElements leaderboard. Stream
 Each draw reports its outcome to chat even when no winner is available (e.g. "StreamElements not configured — draw skipped", "None of the participants appear on the leaderboard — draw skipped").
 
 Raffle history is persisted to `%APPDATA%\Streamer.bot\raffle_history.json`.
+
+### Event notifications
+
+36 pre-built event notification actions, fully localized. Each fires on its platform event and sends an announcement to chat.
+
+**Twitch**
+
+| Action | Trigger event |
+|---|---|
+| Title Changed | Stream updated (title) |
+| Game Changed | Stream updated (category) |
+| Poll Start / Results | Poll created / completed |
+| Prediction Start / Locked / Results | Prediction lifecycle |
+| Ad Run / Upcoming Ads | Ad break start / upcoming |
+| Hype Train Start / Level Up / End | Hype train lifecycle |
+| Raid | Incoming raid |
+| New Subscriber / Resubscriber | Subscription |
+| Gifted Subscription / Gift Bomb | Gift sub events |
+
+**YouTube**
+
+| Action | Trigger event |
+|---|---|
+| Super Chat / Super Sticker | Super Chat / Sticker |
+| New Member / New Gifted Membership | Membership events |
+
+**Kick** (requires [Kick.bot](https://kick.bot))
+
+| Action | Trigger event |
+|---|---|
+| New Follow / Subscriber / Resubscriber | Follow / sub events |
+| Gifted Subscription / Mass Gifted | Gift sub events |
+| Host | Incoming raid |
+| Title Changed / Category Changed | Stream updated |
+| Poll Start / Results | Poll lifecycle |
+| Prediction Start / Locked / Results | Prediction lifecycle |
+
+Import files are at `generated/streamerbot/notif_*.import.txt`. All messages are in `locales/{locale}.json` under the `notifications` key.
 
 ---
 

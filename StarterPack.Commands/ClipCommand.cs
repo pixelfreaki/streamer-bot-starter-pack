@@ -5,8 +5,8 @@ namespace StarterPack.Commands;
 
 public class ClipCommand : ICommand
 {
-    private const string DefaultSuccess = "🎬 {user} created a clip! {clipUrl}";
-    private const string DefaultFailure = "❌ Couldn't create a clip right now. Try again, {user}!";
+    private const string DefaultSuccess = "⚠️ Replay Buffer wasn't running, so I used Twitch clip instead. {clipUrl}";
+    private const string DefaultFailure = "⚠️ Replay Buffer wasn't running — and Twitch clip also failed. Try again, {user}!";
 
     private readonly string _success;
     private readonly string _failure;

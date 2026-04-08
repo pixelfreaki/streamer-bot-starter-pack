@@ -74,7 +74,7 @@ public class ClipCommandTests
         var result = await command.ExecuteAsync(ContextFor("streamer"));
 
         Assert.True(result.Success);
-        Assert.Contains("streamer", result.Message);
+        Assert.Contains("https://clips.twitch.tv/test", result.Message);
         Assert.DoesNotContain("{user}", result.Message);
         Assert.DoesNotContain("{clipUrl}", result.Message);
     }
