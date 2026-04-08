@@ -3432,6 +3432,7 @@ public class CPHInline
             CPH.TwitchAnnounce({top5_lit}.Replace({ph_user}, top5Winner), false, "purple");
         else
             CPH.TwitchAnnounce({top5_no_leaderboard_lit}, false, "orange");
+        Thread.Sleep(1500);
 
         // Ranked and Extra draws require !join
         string top10Winner = null;
@@ -3460,6 +3461,7 @@ public class CPHInline
                 else
                     CPH.TwitchAnnounce({top10_no_winner_lit}, false, "orange");
             }}
+            Thread.Sleep(1500);
 
             // Extra draw: random from all joined
             bonusWinner  = joined[rng.Next(joined.Length)];
