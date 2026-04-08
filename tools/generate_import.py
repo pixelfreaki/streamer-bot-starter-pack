@@ -2993,7 +2993,6 @@ def build_top_code(limit, header_tmpl, entry_tmpl, not_available_msg):
 
     return f"""\
 using System;
-using System.Net;
 using System.Collections.Generic;
 
 public class CPHInline
@@ -3327,7 +3326,6 @@ def build_draw_raffle_code(
 
     return f"""\
 using System;
-using System.Net;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -3572,7 +3570,6 @@ def build_chat_activity_points_code(points, min_length, bots, bttv_emotes):
 
     return f"""\
 using System;
-using System.Net;
 using System.Collections.Generic;
 
 public class CPHInline
@@ -3639,17 +3636,17 @@ public class CPHInline
         try
         {{
             string url = "https://api.streamelements.com/kappa/v2/points/"
-                + seChannel + "/" + user + "/{points_url_suffix}";
+                + seChannel + "/" + Uri.EscapeDataString(user) + "/{points_url_suffix}";
             CPH.LogInfo("[chatactivity] PUT " + url);
-            using (var client = new WebClient())
-            {{
-                client.Headers[HttpRequestHeader.Authorization] = "Bearer " + seJwt;
-                client.Headers[HttpRequestHeader.ContentType] = "application/json";
-                byte[] resp = client.UploadData(url, "PUT", new byte[0]);
-                CPH.LogInfo("[chatactivity] response=" + System.Text.Encoding.UTF8.GetString(resp));
-            }}
+            var req = (System.Net.HttpWebRequest)System.Net.WebRequest.Create(url);
+            req.Method = "PUT";
+            req.Headers[System.Net.HttpRequestHeader.Authorization] = "Bearer " + seJwt;
+            req.ContentLength = 0;
+            using (var resp = (System.Net.HttpWebResponse)req.GetResponse())
+            using (var sr = new System.IO.StreamReader(resp.GetResponseStream()))
+                CPH.LogInfo("[chatactivity] response=" + sr.ReadToEnd() + " status=" + (int)resp.StatusCode);
         }}
-        catch (WebException ex)
+        catch (System.Net.WebException ex)
         {{
             string errBody = "";
             if (ex.Response != null)
