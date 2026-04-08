@@ -3187,7 +3187,7 @@ public class CPHInline
             return true;
         }}
 
-        string user = args.ContainsKey("user") ? args["user"].ToString() : "";
+        string user = (args.ContainsKey("user") ? args["user"].ToString() : "").TrimStart('@');
         string raw  = CPH.GetGlobalVar<string>("raffle_joined", true) ?? "";
         string[] parts = raw.Length > 0 ? raw.Split('|') : new string[0];
 
@@ -3342,7 +3342,7 @@ public class CPHInline
         string raw      = CPH.GetGlobalVar<string>("raffle_joined",    true) ?? "";
         CPH.SetGlobalVar("raffle_open", false, true);
 
-        string[] joined = raw.Length > 0 ? raw.Split('|') : new string[0];
+        string[] joined = raw.Length > 0 ? Array.ConvertAll(raw.Split('|'), u => u.TrimStart('@')) : new string[0];
 
         CPH.TwitchAnnounce({starting_lit}, false, "purple");
         Thread.Sleep(10000);
@@ -3370,7 +3370,7 @@ public class CPHInline
                         if (q1 < 0) break;
                         int q2 = json.IndexOf('"', q1 + 1);
                         if (q2 < 0) break;
-                        leaderboard.Add(json.Substring(q1 + 1, q2 - q1 - 1));
+                        leaderboard.Add(json.Substring(q1 + 1, q2 - q1 - 1).TrimStart('@'));
                         pos = q2 + 1;
                     }}
                 }}
@@ -3583,7 +3583,7 @@ public class CPHInline
 
     public bool Execute()
     {{
-        string user    = args.ContainsKey("user")    ? args["user"].ToString()    : "";
+        string user    = (args.ContainsKey("user") ? args["user"].ToString() : "").TrimStart('@');
         string message = args.ContainsKey("message") ? args["message"].ToString() : "";
         int emoteCount = 0;
         if (args.ContainsKey("emoteCount") && args["emoteCount"] != null)
