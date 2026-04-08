@@ -327,7 +327,9 @@
       "success": "🎬 {user} created a clip! {clipUrl}",
       "failure": "❌ Couldn't create a clip right now. Try again, {user}!",
       "creating": "/me @%user% is creating a clip...",
-      "notAvailable": "@%user% %command% is not available on this platform D:"
+      "notAvailable": "@%user% %command% is not available on this platform D:",
+      "replaySaved": "Replay saved! Check your OBS Replays folder, @%user%!",
+      "cooldown": "@%user% wait {secs}s before clipping again."
     },
     "lurk": {
       "responses": [

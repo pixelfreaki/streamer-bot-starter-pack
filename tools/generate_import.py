@@ -487,138 +487,175 @@ public class CPHInline
 }}"""
 
 
-def make_clip_action_native(name, group, queue_id, success_msg, failure_msg, creating_msg, not_available_msg):
-    """
-    Builds the Streamer.bot clip action using native sub-actions (no inline C#).
-
-    Flow (Twitch):
-      1. Send "creating clip..." chat message
-      2. type 18 — Create Clip (sets %createClipSuccess% and %createClipUrl%)
-      3. type 120 — If %createClipSuccess% == True
-           Then (99901): send success message with %createClipUrl%
-           Else (99902): send failure message
-
-    Kick / YouTube receive a "not available" message.
-    """
-    action_id  = str(uuid.uuid4())
-    command_id = str(uuid.uuid4())
-    switch_id  = str(uuid.uuid4())
-
-    # Replace locale placeholders with Streamer.bot variables
-    twitch_success = success_msg.replace("{user}", "@%user%").replace("{clipUrl}", "%createClipUrl%")
-    twitch_failure = failure_msg.replace("{user}", "@%user%")
-    not_available  = not_available_msg
-
-    # --- Twitch branch ---
-    twitch_id   = str(uuid.uuid4())
-    if_id       = str(uuid.uuid4())
-    then_id     = str(uuid.uuid4())
-    else_id     = str(uuid.uuid4())
-
-    twitch_case = {
-        "caseSensitive": True, "values": ["twitch"], "random": False,
-        "subActions": [
-            # 1. "creating clip..." message
-            {"text": creating_msg, "useBot": True, "fallback": True,
-             "id": str(uuid.uuid4()), "weight": 0.0, "type": 10,
-             "parentId": twitch_id, "enabled": True, "index": 0},
-            # 2. Native Create Clip action
-            {"title": None, "duration": None,
-             "id": str(uuid.uuid4()), "weight": 0.0, "type": 18,
-             "parentId": twitch_id, "enabled": True, "index": 1},
-            # 3. If/else on %createClipSuccess%
-            {
-                "input": "%createClipSuccess%", "operation": 0, "value": "True", "autoType": True,
-                "subActions": [
-                    {   # Then
-                        "random": False,
-                        "subActions": [
-                            {"text": f"/me {twitch_success}", "useBot": True, "fallback": True,
-                             "id": str(uuid.uuid4()), "weight": 0.0, "type": 10,
-                             "parentId": then_id, "enabled": True, "index": 0}
-                        ],
-                        "id": then_id, "weight": 0.0, "type": 99901,
-                        "parentId": if_id, "enabled": True, "index": 0,
-                    },
-                    {   # Else
-                        "random": False,
-                        "subActions": [
-                            {"text": f"/me {twitch_failure}", "useBot": True, "fallback": True,
-                             "id": str(uuid.uuid4()), "weight": 0.0, "type": 10,
-                             "parentId": else_id, "enabled": True, "index": 0}
-                        ],
-                        "id": else_id, "weight": 0.0, "type": 99902,
-                        "parentId": if_id, "enabled": True, "index": 1,
-                    },
-                ],
-                "id": if_id, "weight": 0.0, "type": 120,
-                "parentId": twitch_id, "enabled": True, "index": 2,
-            },
-        ],
-        "id": twitch_id, "weight": 0.0, "type": 99903,
-        "parentId": switch_id, "enabled": True, "index": 0,
-    }
-
-    # --- Kick branch ---
-    kick_id = str(uuid.uuid4())
-    kick_case = {
-        "caseSensitive": True, "values": ["kick"], "random": False,
-        "subActions": [
-            {"text": not_available, "useBot": True, "fallback": True,
-             "id": str(uuid.uuid4()), "weight": 0.0, "type": 35001,
-             "parentId": kick_id, "enabled": True, "index": 0}
-        ],
-        "id": kick_id, "weight": 0.0, "type": 99903,
-        "parentId": switch_id, "enabled": True, "index": 1,
-    }
-
-    # --- YouTube branch ---
-    youtube_id = str(uuid.uuid4())
-    youtube_case = {
-        "caseSensitive": True, "values": ["youtube"], "random": False,
-        "subActions": [
-            {"text": not_available, "useBot": True, "fallback": True, "broadcast": 0,
-             "id": str(uuid.uuid4()), "weight": 0.0, "type": 4001,
-             "parentId": youtube_id, "enabled": True, "index": 0}
-        ],
-        "id": youtube_id, "weight": 0.0, "type": 99903,
-        "parentId": switch_id, "enabled": True, "index": 2,
-    }
-
-    # --- Default branch ---
-    default_id = str(uuid.uuid4())
-    default_case = {
-        "random": False, "subActions": [],
-        "id": default_id, "weight": 0.0, "type": 99904,
-        "parentId": switch_id, "enabled": True, "index": 3,
-    }
-
-    platform_switch = {
-        "input": "%commandSource%", "autoType": False,
-        "subActions": [twitch_case, kick_case, youtube_case, default_case],
-        "id": switch_id, "weight": 0.0, "type": 127,
-        "parentId": None, "enabled": True, "index": 1,
-    }
-
-    action = {
-        "id": action_id, "queue": queue_id, "enabled": True,
-        "excludeFromHistory": False, "excludeFromPending": False,
-        "name": name, "group": group,
-        "alwaysRun": False, "randomAction": False, "concurrent": False,
-        "triggers": [
-            {"commandId": command_id, "id": str(uuid.uuid4()),
-             "type": 401, "enabled": True, "exclusions": []}
-        ],
-        "subActions": [
-            {"value": "Code", "color": "", "id": str(uuid.uuid4()),
-             "weight": 0.0, "type": 1009, "parentId": None, "enabled": True, "index": 0},
-            platform_switch,
-        ],
-        "collapsedGroups": [],
-    }
-
-    return action_id, command_id, action
-
+def make_clip_action_smart(name, group, queue_id, msgs):
+    """
+    Smart clip action: checks OBS replay buffer first, falls back to Twitch clip.
+
+    Flow:
+      1. C# checks 30s cooldown
+      2. C# calls OBS GetReplayBufferStatus via ObsSendRaw
+         - active  -> SaveReplayBuffer + set %clipResult% = replaySaved message
+         - inactive/disconnected -> TwitchCreateClip + set %clipResult% = success/failure
+      3. Platform switch: Twitch -> announce %clipResult%, Kick/YouTube -> not_available
+    """
+    action_id  = str(uuid.uuid4())
+    command_id = str(uuid.uuid4())
+
+    creating_msg    = msgs["creating"]
+    success_msg     = msgs["success"].replace("{user}", "@%user%").replace("{clipUrl}", "%createClipUrl%")
+    failure_msg     = msgs["failure"].replace("{user}", "@%user%")
+    replay_msg      = msgs["replaySaved"]
+    cooldown_msg    = msgs["cooldown"]
+    not_avail_msg   = msgs["notAvailable"]
+
+    code = f"""using System;
+using System.Text.Json;
+
+public class CPHInline
+{{
+    private const int    OBS_CONNECTION = 0;
+    private const int    COOLDOWN_SECS  = 30;
+    private const string COOLDOWN_KEY   = "clip_last";
+
+    public bool Execute()
+    {{
+        string lastStr = CPH.GetGlobalVar<string>(COOLDOWN_KEY, false);
+        if (!string.IsNullOrEmpty(lastStr))
+        {{
+            DateTime last;
+            if (DateTime.TryParse(lastStr, null,
+                System.Globalization.DateTimeStyles.RoundtripKind, out last))
+            {{
+                double elapsed = (DateTime.UtcNow - last).TotalSeconds;
+                if (elapsed < COOLDOWN_SECS)
+                {{
+                    CPH.SetArgument("clipResult",
+                        "{cooldown_msg}".Replace("{{secs}}", ((int)(COOLDOWN_SECS - elapsed)).ToString()));
+                    return true;
+                }}
+            }}
+        }}
+
+        CPH.SetGlobalVar(COOLDOWN_KEY, DateTime.UtcNow.ToString("O"), false);
+
+        if (CPH.ObsIsConnected(OBS_CONNECTION))
+        {{
+            bool replayActive = false;
+            try
+            {{
+                string raw = CPH.ObsSendRaw("GetReplayBufferStatus", "{{}}", OBS_CONNECTION);
+                if (!string.IsNullOrEmpty(raw))
+                {{
+                    using var doc = JsonDocument.Parse(raw);
+                    if (doc.RootElement.TryGetProperty("outputActive", out var prop))
+                        replayActive = prop.GetBoolean();
+                }}
+            }}
+            catch {{ }}
+
+            if (replayActive)
+            {{
+                CPH.ObsSendRaw("SaveReplayBuffer", "{{}}", OBS_CONNECTION);
+                CPH.SetArgument("clipResult", "{replay_msg}");
+                return true;
+            }}
+        }}
+
+        CPH.SendMessage("{creating_msg}", true);
+        bool created = CPH.TwitchCreateClip(false);
+        CPH.SetArgument("clipResult", created
+            ? "{success_msg}"
+            : "{failure_msg}");
+        return true;
+    }}
+}}"""
+
+    code_bc = __import__("base64").b64encode(code.encode("utf-8")).decode("utf-8")
+
+    refs = [
+        "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\mscorlib.dll",
+        "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.dll",
+        "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.Core.dll",
+    ]
+
+    switch_id  = str(uuid.uuid4())
+    twitch_id  = str(uuid.uuid4())
+    kick_id    = str(uuid.uuid4())
+    yt_id      = str(uuid.uuid4())
+    default_id = str(uuid.uuid4())
+
+    action = {
+        "id": action_id, "queue": queue_id, "enabled": True,
+        "excludeFromHistory": False, "excludeFromPending": False,
+        "name": name, "group": group,
+        "alwaysRun": False, "randomAction": False, "concurrent": False,
+        "triggers": [
+            {"commandId": command_id, "id": str(uuid.uuid4()),
+             "type": 401, "enabled": True, "exclusions": []}
+        ],
+        "subActions": [
+            {"value": "Code", "color": "", "id": str(uuid.uuid4()),
+             "weight": 0.0, "type": 1009, "parentId": None, "enabled": True, "index": 0},
+            {
+                "name": "", "description": "",
+                "references": [
+                    "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\mscorlib.dll",
+                    "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.dll",
+                    "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.Core.dll",
+                ],
+                "byteCode": code_bc,
+                "precompile": False, "delayStart": False,
+                "saveResultToVariable": False, "saveToVariable": "",
+                "id": str(uuid.uuid4()), "weight": 0.0, "type": 99999,
+                "parentId": None, "enabled": True, "index": 1,
+            },
+            {
+                "input": "%commandSource%", "autoType": False,
+                "subActions": [
+                    {
+                        "caseSensitive": True, "values": ["twitch"], "random": False,
+                        "subActions": [
+                            {"text": "%clipResult%", "color": 4, "useBot": True, "fallback": True,
+                             "id": str(uuid.uuid4()), "weight": 0.0, "type": 23,
+                             "parentId": twitch_id, "enabled": True, "index": 0},
+                        ],
+                        "id": twitch_id, "weight": 0.0, "type": 99903,
+                        "parentId": switch_id, "enabled": True, "index": 0,
+                    },
+                    {
+                        "caseSensitive": True, "values": ["kick"], "random": False,
+                        "subActions": [
+                            {"text": not_avail_msg, "useBot": True, "fallback": True,
+                             "id": str(uuid.uuid4()), "weight": 0.0, "type": 35001,
+                             "parentId": kick_id, "enabled": True, "index": 0},
+                        ],
+                        "id": kick_id, "weight": 0.0, "type": 99903,
+                        "parentId": switch_id, "enabled": True, "index": 1,
+                    },
+                    {
+                        "caseSensitive": True, "values": ["youtube"], "random": False,
+                        "subActions": [
+                            {"text": not_avail_msg, "useBot": True, "fallback": True, "broadcast": 0,
+                             "id": str(uuid.uuid4()), "weight": 0.0, "type": 4001,
+                             "parentId": yt_id, "enabled": True, "index": 0},
+                        ],
+                        "id": yt_id, "weight": 0.0, "type": 99903,
+                        "parentId": switch_id, "enabled": True, "index": 2,
+                    },
+                    {
+                        "random": False, "subActions": [],
+                        "id": default_id, "weight": 0.0, "type": 99904,
+                        "parentId": switch_id, "enabled": True, "index": 3,
+                    },
+                ],
+                "id": switch_id, "weight": 0.0, "type": 127,
+                "parentId": None, "enabled": True, "index": 2,
+            },
+        ],
+        "collapsedGroups": [],
+    }
+
+    return action_id, command_id, action
 
 def build_lurk_code(messages):
     """
@@ -3973,9 +4010,6 @@ def main():
 
     # ── clip ───────────────────────────────────────────────────────────────────
     clip_data = locale_data["commands"]["clip"]
-    clip_success = clip_data["success"]
-    clip_failure = clip_data["failure"]
-
     cmd = commands_config["clip"]
     queue_key = cmd["queue"]
     if queue_key not in queues_config:
@@ -3983,11 +4017,8 @@ def main():
     queue_def = queues_config[queue_key]
     queue_id = queue_def["id"]
 
-    clip_creating      = clip_data["creating"]
-    clip_not_available = clip_data["notAvailable"]
-    action_id, command_id, action = make_clip_action_native(
-        cmd["trigger"], cmd["group"], queue_id,
-        clip_success, clip_failure, clip_creating, clip_not_available
+    action_id, command_id, action = make_clip_action_smart(
+        cmd["trigger"], cmd["group"], queue_id, clip_data
     )
     command = make_command(cmd["trigger"], cmd["trigger"], cmd["group"], command_id, action_id)
     print(f"[clip] queue: {queue_def['name']} (blocking={queue_def['blocking']}), group: {cmd['group']}")
