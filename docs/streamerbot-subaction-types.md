@@ -196,13 +196,17 @@ Platform Switch (127)
     type 23, color=4
 ```
 
-### Timer-triggered event action (e.g. chatactivitypoints)
+### Chat Message event action (e.g. chatactivitypoints)
 ```
 Label (1009)
 Inline C# (99999)    → reads %user%, %message%, %emoteCount%; awards SE points via WebClient PUT
 ```
-Trigger: type 701, `timerId` → timer with `interval: 30`, `enabled: false` (acts as per-user cooldown gate).
-No command trigger — fires on Twitch Chat Message event.
+Trigger: **none in the import** — add manually via Triggers → Twitch → Chat → Message after importing.
+The 30-second per-user cooldown is enforced in C# using `CPH.GetGlobalVar<string>` / `CPH.SetGlobalVar`
+with ISO-8601 timestamps keyed per user (`chatpoints_last_{user}`).
+
+> **Do not use type 701 (Timer) for chat-message actions.** Timer triggers fire on a schedule and do
+> not populate `user`, `message`, or `emoteCount` args. Those args only appear in Twitch Chat Message event triggers.
 
 ---
 
