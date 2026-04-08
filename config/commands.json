@@ -219,7 +219,9 @@
   "chatactivitypoints": {
     "queue": "info",
     "group": "StreamElements",
-    "action_id": "d7e8f9a0-b1c2-3456-d7e8-f9a0b1c23456"
+    "action_id": "d7e8f9a0-b1c2-3456-d7e8-f9a0b1c23456",
+    "timer_id": "0d681571-951e-4c5b-aa80-6c11160df843",
+    "trigger_id": "fc878ca9-27c7-4de9-9efa-6dc3dc12713e"
   },
   "join": {
     "trigger": "!join",

@@ -61,10 +61,16 @@ Use this as a lookup when building new actions in `generate_import.py`.
 ```json
 [
   "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\mscorlib.dll",
-  "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.dll"
+  "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.dll",
+  "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\System.Core.dll"
 ]
 ```
-Add `System.dll` when using `System.Net.WebClient`.
+
+| DLL | Required when |
+|---|---|
+| `mscorlib.dll` | Always |
+| `System.dll` | `System.Net.WebClient`, `HttpRequestHeader` |
+| `System.Core.dll` | `HashSet<T>`, `LINQ` (`Where`, `Take`, `Select`) |
 
 ### HTTP / URL
 
@@ -97,9 +103,45 @@ Add `System.dll` when using `System.Net.WebClient`.
 
 ### Triggers
 
-| Type | Name | Key Fields |
-|---|---|---|
-| `401` | Command Trigger | `commandId` — links an action to a `!command` |
+| Type | Name | Key Fields | Notes |
+|---|---|---|---|
+| `401` | Command Trigger | `commandId` — links an action to a `!command` | Paired with a `commands[]` entry in the export |
+| `701` | Timer Trigger | `timerId` — links an action to a named timer | Paired with a `timers[]` entry in the export |
+
+#### Type 701 — Timer Trigger
+
+The timer object lives in `data.timers[]` and is referenced by `timerId` in the trigger:
+
+```json
+{
+  "timers": [{
+    "id": "0d681571-951e-4c5b-aa80-6c11160df843",
+    "name": "Twitch Chat Message Cooldown",
+    "enabled": false,
+    "repeat": true,
+    "interval": 30,
+    "randomInterval": false,
+    "upperInterval": 0,
+    "lines": 0,
+    "counter": 0
+  }]
+}
+```
+
+```json
+{
+  "triggers": [{
+    "timerId": "0d681571-951e-4c5b-aa80-6c11160df843",
+    "id": "fc878ca9-27c7-4de9-9efa-6dc3dc12713e",
+    "type": 701,
+    "enabled": true,
+    "exclusions": []
+  }]
+}
+```
+
+> `enabled: false` on the timer itself is intentional for per-user cooldown use — Streamer.bot uses it as a cooldown gate, not a repeating scheduler.
+> Use stable UUIDs in `config/commands.json` for both `timer_id` and `trigger_id` to prevent duplicates on re-import.
 
 ---
 
@@ -151,6 +193,14 @@ Platform Switch (127)
     Inline C# (99999) → formats message, calls CPH.TwitchAnnounce or sets arg
     type 23, color=4
 ```
+
+### Timer-triggered event action (e.g. chatactivitypoints)
+```
+Label (1009)
+Inline C# (99999)    → reads %user%, %message%, %emoteCount%; awards SE points via WebClient PUT
+```
+Trigger: type 701, `timerId` → timer with `interval: 30`, `enabled: false` (acts as per-user cooldown gate).
+No command trigger — fires on Twitch Chat Message event.
 
 ---
 
