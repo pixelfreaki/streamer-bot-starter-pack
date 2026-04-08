@@ -3475,6 +3475,7 @@ public class CPHInline
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "Streamer.bot",
                 {history_lit});
+            CPH.LogInfo("[drawRaffle] writing history to " + historyPath);
             string top5Json    = top5Winner   != null ? "\\"" + top5Winner   + "\\"" : "null";
             string top10Json  = top10Winner != null ? "\\"" + top10Winner + "\\"" : "null";
             string bonusJson   = bonusWinner  != null ? "\\"" + bonusWinner  + "\\"" : "null";
@@ -3493,8 +3494,9 @@ public class CPHInline
             else
                 updated = existing.Substring(0, existing.Length - 1) + ",\\n" + newEntry + "\\n]";
             File.WriteAllText(historyPath, updated);
+            CPH.LogInfo("[drawRaffle] history written OK: " + historyPath);
         }}
-        catch {{ }}
+        catch (Exception ex) {{ CPH.LogInfo("[drawRaffle] history FAILED: " + ex.GetType().Name + " " + ex.Message); }}
 
         return true;
     }}
