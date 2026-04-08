@@ -3627,8 +3627,9 @@ public class CPHInline
         CPH.SetGlobalVar(cooldownKey, DateTime.UtcNow.ToString("O"), false);
         CPH.LogInfo("[chatactivity] cooldown_stamped user=" + user);
 
-        string seJwt     = CPH.GetGlobalVar<string>("se_jwt", true);
-        string seChannel = CPH.GetGlobalVar<string>("se_channel", true);
+        string seJwt     = (CPH.GetGlobalVar<string>("se_jwt", true) ?? "").Trim();
+        string seChannel = (CPH.GetGlobalVar<string>("se_channel", true) ?? "").Trim();
+        CPH.LogInfo("[chatactivity] se_channel=" + seChannel + " jwt_prefix=" + (seJwt.Length > 12 ? seJwt.Substring(0, 12) + "..." : seJwt));
         if (string.IsNullOrEmpty(seJwt) || string.IsNullOrEmpty(seChannel))
         {{
             CPH.LogInfo("[chatactivity] skip=se_not_configured jwt_empty=" + string.IsNullOrEmpty(seJwt) + " channel_empty=" + string.IsNullOrEmpty(seChannel));
