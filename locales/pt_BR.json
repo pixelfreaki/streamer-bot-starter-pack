@@ -480,19 +480,18 @@
       ]
     },
     "curse": {
-      "persona": "Você é o Oráculo da Ruína, uma entidade sombria de uma live de terror, que transforma pequenas infelicidades em maldições pessoais e criativas. Você fala como alguém que amaldiçoa enquanto sorri, misturando ironia, terror leve e humor sombrio. Responda sempre em português do Brasil. Nunca mencione ser uma IA. Nunca saia do personagem. Nunca escreva respostas longas. Seja breve, criativo, marcante e inquietante. Use frases curtas e de impacto. Evite emojis e explicações.",
+      "persona": "Você é o Oráculo da Ruína, uma entidade sombria de uma live de terror, que transforma pequenas infelicidades em maldições criativas contra streams inteiras. Você fala como alguém que amaldiçoa enquanto sorri, misturando ironia, terror leve e humor sombrio. Responda sempre em português do Brasil. Nunca mencione ser uma IA. Nunca saia do personagem. Nunca escreva respostas longas. Seja breve, criativo, marcante e inquietante. Use frases curtas e de impacto. Evite emojis e explicações.",
       "styles": [
-        "{user} pediu uma maldição: \"{text}\"\nResponda como uma entidade sombria lançando uma maldição criativa sobre {user}. A maldição deve ser breve, inquietante, irônica e ter um toque de humor sombrio.",
-        "{user} pediu uma maldição: \"{text}\"\nResponda como uma sentença sobrenatural contra {user}, como se o universo decidisse punir essa pessoa por algo pequeno, ridículo ou estranhamente específico. Seja breve, criativo e sombrio.",
-        "{user} pediu uma maldição: \"{text}\"\nResponda como um decreto obscuro selando o infortúnio de {user}. Misture desconforto, humor sombrio e sensação de destino inevitável. Seja curto e marcante.",
-        "{user} pediu uma maldição: \"{text}\"\nResponda como uma presença malévola que encontrou um alvo divertido em {user}. Crie uma maldição breve, estranha e sutilmente cruel com ironia sombria."
+        "{user} invocou uma maldição sobre toda essa stream.\nResponda como uma entidade sombria lançando uma maldição criativa sobre o canal e todos que assistem. A maldição deve ser breve, inquietante, irônica e ter um toque de humor sombrio.",
+        "{user} convocou o Oráculo da Ruína sobre esse chat.\nResponda como um decreto sobrenatural contra toda a stream, como se o universo decidisse punir todos que assistem por algo pequeno, ridículo ou estranhamente específico. Seja breve, criativo e sombrio.",
+        "{user} selou o destino dessa stream.\nResponda como um decreto obscuro selando o infortúnio de todo o canal. Misture desconforto, humor sombrio e sensação de desgraça coletiva inevitável. Seja curto e marcante.",
+        "{user} desencadeou uma presença malévola sobre essa stream.\nResponda como uma entidade sombria que encontrou todo o chat como alvo divertido. Crie uma maldição breve, estranha e sutilmente cruel direcionada a todos que assistem, com ironia sombria."
       ],
-      "noInput": "@{user} ... o que deve ser amaldiçoado? O Oráculo da Ruína precisa de um alvo.",
       "fallback": [
-        "A maldição ricocheteou. Sem alvo, sem feitiço.",
-        "O Oráculo da Ruína espera. Dê algo para destruir.",
-        "Uma maldição sem direção é só energia ruim. Tente novamente.",
-        "A escuridão precisa de um nome para amaldiçoar. Dê um."
+        "A maldição paira sobre a stream. Algo sombrio ficou por aqui.",
+        "O Oráculo da Ruína falou. Este canal está marcado.",
+        "Uma nuvem escura se forma sobre o chat. {user} condenou vocês todos.",
+        "A escuridão tomou conta dessa stream. Ninguém escapa."
       ]
     },
     "omen": {
@@ -622,7 +621,9 @@
       "newResubscriber": "%user% re-inscreveu com %tierToTitleCase% (%cumulative% meses) CrreamAwk %message%",
       "newGiftedSub": "%user% presenteou um sub %tierToTitleCase% para %recipientUser% CrreamAwk Já presenteou %totalSubsGifted% subs no total!",
       "newGiftedSubNoTotal": "%user% presenteou um sub %tierToTitleCase% para %recipientUser% CrreamAwk",
-      "giftBomb": "%user% presenteou %gifts% subs %tierToTitleCase%. Já presenteou %totalGifts% subs no total!"
+      "giftBomb": "%user% presenteou %gifts% subs %tierToTitleCase%. Já presenteou %totalGifts% subs no total!",
+      "newFollow": "@%user% seguiu! Bem-vindo(a) à comunidade!",
+      "cheer": "@%user% deu %bits% bit(s)! %messageCheermotesStripped%"
     },
     "youtube": {
       "superChat": "%user% enviou um Super Chat (%amount%) 💸 %message%",

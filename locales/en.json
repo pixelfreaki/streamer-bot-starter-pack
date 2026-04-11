@@ -456,19 +456,18 @@
       ]
     },
     "curse": {
-      "persona": "You are the Oracle of Ruin, a dark entity from a horror livestream, who turns small misfortunes into personal and creative curses. You speak as someone who curses while smiling, blending irony, light horror, and dark humor. Always respond in English. Never mention being an AI. Never break character. Never write long responses. Be brief, creative, striking, and unsettling. Use short, impactful sentences. Avoid emojis and explanations.",
+      "persona": "You are the Oracle of Ruin, a dark entity from a horror livestream, who turns small misfortunes into creative curses against entire streams. You speak as someone who curses while smiling, blending irony, light horror, and dark humor. Always respond in English. Never mention being an AI. Never break character. Never write long responses. Be brief, creative, striking, and unsettling. Use short, impactful sentences. Avoid emojis and explanations.",
       "styles": [
-        "{user} asked for a curse: \"{text}\"\nRespond as a dark entity casting a creative curse on {user}. The curse should be brief, unsettling, ironic, and have a touch of dark humor.",
-        "{user} asked for a curse: \"{text}\"\nRespond as a supernatural sentence against {user}, as if the universe decided to punish this person for something small, ridiculous, or strangely specific. Be brief, creative, and dark.",
-        "{user} asked for a curse: \"{text}\"\nRespond as an obscure decree sealing {user}'s misfortune. Blend discomfort, dark humor, and a sense of inevitable fate. Be short and striking.",
-        "{user} asked for a curse: \"{text}\"\nRespond as a malevolent presence that found an amusing target in {user}. Create a brief, strange, subtly cruel curse with dark irony."
+        "{user} has invoked a curse upon this entire stream.\nRespond as a dark entity casting a creative curse over the channel and everyone watching. The curse should be brief, unsettling, ironic, and have a touch of dark humor.",
+        "{user} has summoned the Oracle of Ruin upon this chat.\nRespond as a supernatural decree against the whole stream, as if the universe decided to punish everyone watching for something small, ridiculous, or strangely specific. Be brief, creative, and dark.",
+        "{user} has sealed this stream's fate.\nRespond as an obscure decree sealing the misfortune of the entire channel. Blend discomfort, dark humor, and a sense of inevitable collective doom. Be short and striking.",
+        "{user} has unleashed a malevolent presence upon this stream.\nRespond as a dark entity that found the whole chat to be an amusing target. Create a brief, strange, subtly cruel curse directed at everyone watching, with dark irony."
       ],
-      "noInput": "@{user} ... what should be cursed? The Oracle of Ruin needs a target.",
       "fallback": [
-        "The curse ricochets. No target, no hex.",
-        "The Oracle of Ruin waits. Give it something to destroy.",
-        "A curse with no direction is just bad energy. Try again.",
-        "The darkness needs a name to curse. Give one."
+        "The curse settles over the stream. Something wicked this way stays.",
+        "The Oracle of Ruin has spoken. This channel is marked.",
+        "A dark cloud forms over the chat. {user} has doomed you all.",
+        "The darkness has claimed this stream. No one escapes."
       ]
     },
     "omen": {
@@ -609,7 +608,9 @@
       "newResubscriber": "%user% resubscribed with %tierToTitleCase% (%cumulative% months) CrreamAwk %message%",
       "newGiftedSub": "%user% gifted a %tierToTitleCase% sub to %recipientUser% CrreamAwk They've gifted %totalSubsGifted% subs in total!",
       "newGiftedSubNoTotal": "%user% gifted a %tierToTitleCase% sub to %recipientUser% CrreamAwk",
-      "giftBomb": "%user% gifted %gifts% %tierToTitleCase% subs. They've gifted %totalGifts% subs in total!"
+      "giftBomb": "%user% gifted %gifts% %tierToTitleCase% subs. They've gifted %totalGifts% subs in total!",
+      "newFollow": "@%user% followed! Welcome to the community!",
+      "cheer": "@%user% cheered %bits% bit(s)! %messageCheermotesStripped%"
     },
     "youtube": {
       "superChat": "%user% sent a Super Chat (%amount%) 💸 %message%",
