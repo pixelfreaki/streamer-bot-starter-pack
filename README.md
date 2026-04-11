@@ -88,7 +88,7 @@ Raffle history is persisted to `%APPDATA%\Streamer.bot\raffle_history.json`.
 
 ### Event notifications
 
-36 pre-built event notification actions, fully localized. Each fires on its platform event and sends an announcement to chat.
+38 pre-built event notification actions, fully localized. Each fires on its platform event and sends an announcement to chat.
 
 **Twitch**
 
@@ -96,6 +96,8 @@ Raffle history is persisted to `%APPDATA%\Streamer.bot\raffle_history.json`.
 |---|---|
 | Title Changed | Stream updated (title) |
 | Game Changed | Stream updated (category) |
+| New Follow | Incoming follow |
+| Cheer | Bits cheered |
 | Poll Start / Results | Poll created / completed |
 | Prediction Start / Locked / Results | Prediction lifecycle |
 | Ad Run / Upcoming Ads | Ad break start / upcoming |
@@ -137,7 +139,7 @@ Import files are at `generated/streamerbot/notif_*.import.txt`. All messages are
 ## Install
 
 ```bash
-git clone https://github.com/your-user/streamer-bot-starter-pack
+git clone https://github.com/pixelfreaki/streamer-bot-starter-pack
 cd streamer-bot-starter-pack
 dotnet restore
 ```
@@ -187,10 +189,14 @@ AI_Licia commands show `[AI_Licia triggered — response will appear in chat]` s
 ### 1. Generate the import files
 
 ```bash
-python tools/generate_import.py
+python tools/generate_import.py            # one file per command (default)
+python tools/generate_import.py --group    # one file per action group
+python tools/generate_import.py --all      # both individual and grouped files
 ```
 
-This reads `appsettings.json` (for locale) and `locales/{locale}.json` (for messages), then writes one `.import.txt` file per command into `generated/streamerbot/`.
+This reads `appsettings.json` (for locale) and `locales/{locale}.json` (for messages), then writes import files into `generated/streamerbot/`.
+
+Grouped files are named `group_<name>.import.txt` and contain all actions for that group (Fun, Notifications, Raffle, etc.) in a single import.
 
 ### 2. Import into Streamer.bot
 
