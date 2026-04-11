@@ -166,7 +166,6 @@ string   horoscopeNoInput  = horoscopeElement.GetProperty("noInput").GetString()
 var curseElement     = commandsElement.GetProperty("curse");
 string[] curseStyles   = curseElement.GetProperty("styles").EnumerateArray().Select(x => x.GetString()!).ToArray();
 string[] curseFallback = curseElement.GetProperty("fallback").EnumerateArray().Select(x => x.GetString()!).ToArray();
-string   curseNoInput  = curseElement.GetProperty("noInput").GetString()!;
 
 var omenElement     = commandsElement.GetProperty("omen");
 string[] omenStyles   = omenElement.GetProperty("styles").EnumerateArray().Select(x => x.GetString()!).ToArray();
@@ -257,7 +256,7 @@ var commands = new Dictionary<string, ICommand>(StringComparer.OrdinalIgnoreCase
     ["scene"]          = new SceneCommand(),
     ["oracle"]         = new OracleCommand(oracleStyles, oracleFallback, oracleNoInput, aiLicia.IsAvailable ? aiLicia : null),
     ["horoscope"]      = new HoroscopeCommand(horoscopeStyles, horoscopeFallback, horoscopeNoInput, aiLicia.IsAvailable ? aiLicia : null),
-    ["curse"]          = new CurseCommand(curseStyles, curseFallback, curseNoInput, aiLicia.IsAvailable ? aiLicia : null),
+    ["curse"]          = new CurseCommand(curseStyles, curseFallback, aiLicia.IsAvailable ? aiLicia : null),
     ["omen"]           = new OmenCommand(omenStyles, omenFallback, aiLicia.IsAvailable ? aiLicia : null),
     ["tarot"]          = new TarotCommand(tarotStyles, tarotFallback, aiLicia.IsAvailable ? aiLicia : null),
     ["judge"]          = new JudgeCommand(judgeStyles, judgeFallback, judgeNoInput, aiLicia.IsAvailable ? aiLicia : null),

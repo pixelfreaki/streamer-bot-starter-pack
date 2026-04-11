@@ -9,9 +9,8 @@ public class CurseCommandTests
 {
     private static CurseCommand MakeCommand(IAiProvider? ai = null) =>
         new(
-            styles: ["Curse for {user}: {text}"],
-            fallback: ["The curse ricochets.", "No target, no hex."],
-            noInput: "@{user} ... what should be cursed?",
+            styles: ["Curse from {user} upon this stream."],
+            fallback: ["The curse settles over the stream.", "This channel is marked."],
             aiProvider: ai
         );
 
@@ -20,46 +19,45 @@ public class CurseCommandTests
         Assert.Equal("curse", MakeCommand().Name);
 
     [Fact]
-    public async Task EmptyInput_ReturnsNoInputMessage()
+    public async Task NoAi_ReturnsFallback()
     {
-        var result = await MakeCommand().ExecuteAsync(new CommandContext { UserName = "viewer1", Input = "" });
+        var result = await MakeCommand(ai: null).ExecuteAsync(new CommandContext { UserName = "viewer1" });
         Assert.True(result.Success);
-        Assert.Contains("viewer1", result.Message);
+        Assert.True(result.Message is "The curse settles over the stream." or "This channel is marked.");
     }
 
     [Fact]
-    public async Task WhitespaceInput_ReturnsNoInputMessage()
+    public async Task NoAi_EmptyInput_StillReturnsFallback()
     {
-        var result = await MakeCommand().ExecuteAsync(new CommandContext { UserName = "viewer1", Input = "   " });
+        var result = await MakeCommand(ai: null).ExecuteAsync(new CommandContext { UserName = "viewer1", Input = "" });
         Assert.True(result.Success);
-        Assert.Contains("viewer1", result.Message);
+        Assert.NotEmpty(result.Message);
     }
 
     [Fact]
-    public async Task NoAi_WithInput_ReturnsFallback()
-    {
-        var result = await MakeCommand(ai: null).ExecuteAsync(new CommandContext { UserName = "viewer1", Input = "bad luck" });
-        Assert.True(result.Success);
-        Assert.True(result.Message == "The curse ricochets." || result.Message == "No target, no hex.");
-    }
-
-    [Fact]
-    public async Task WithAi_WithInput_TriggersAiAndReturnsEmpty()
+    public async Task WithAi_TriggersAiAndReturnsEmpty()
     {
         var ai = new FakeAiProvider();
-        var result = await MakeCommand(ai: ai).ExecuteAsync(new CommandContext { UserName = "viewer1", Input = "bad luck" });
+        var result = await MakeCommand(ai: ai).ExecuteAsync(new CommandContext { UserName = "viewer1" });
         Assert.True(result.Success);
         Assert.Equal(string.Empty, result.Message);
         Assert.True(ai.WasCalled);
         Assert.Contains("viewer1", ai.LastPrompt);
-        Assert.Contains("bad luck", ai.LastPrompt);
     }
 
     [Fact]
-    public async Task WithUnavailableAi_WithInput_ReturnsFallback()
+    public async Task WithAi_PromptDoesNotRequireInput()
+    {
+        var ai = new FakeAiProvider();
+        await MakeCommand(ai: ai).ExecuteAsync(new CommandContext { UserName = "viewer1", Input = "" });
+        Assert.True(ai.WasCalled);
+    }
+
+    [Fact]
+    public async Task WithUnavailableAi_ReturnsFallback()
     {
         var ai = new FakeAiProvider(available: false);
-        var result = await MakeCommand(ai: ai).ExecuteAsync(new CommandContext { UserName = "viewer1", Input = "bad luck" });
+        var result = await MakeCommand(ai: ai).ExecuteAsync(new CommandContext { UserName = "viewer1" });
         Assert.True(result.Success);
         Assert.NotEmpty(result.Message);
         Assert.False(ai.WasCalled);
