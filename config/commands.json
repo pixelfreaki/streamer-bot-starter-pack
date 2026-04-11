@@ -261,5 +261,14 @@
     "mod_only": true,
     "action_id": "c9d0e1f2-a3b4-5678-c9d0-e1f2a3b45678",
     "command_id": "d0e1f2a3-b4c5-6789-d0e1-f2a3b4c56789"
+  },
+  "windows_notifications": {
+    "action_id": "b52a7779-8b29-4a77-ad01-b2907bca93ef"
+  },
+  "notif_twitch_new_follow": {
+    "action_id": "3dce34e2-96b3-403e-a308-a066c866c09c"
+  },
+  "notif_twitch_cheer": {
+    "action_id": "950aa174-cdf0-4519-9197-d396fbcbffaf"
   }
 }
